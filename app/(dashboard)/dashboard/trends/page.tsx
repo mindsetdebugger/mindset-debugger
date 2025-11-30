@@ -16,45 +16,53 @@ import {
   Bar,
 } from "recharts";
 
+const ranges = ["week", "month", "quarter", "year"] as const;
+type Range = (typeof ranges)[number];
+type ChartType = "line" | "bar";
+
+// STATIC DATA OUTSIDE COMPONENT  👇
+// Emotional trend (dummy data)
+const EMOTIONAL_TREND = [
+  { day: "Mon", value: 62 },
+  { day: "Tue", value: 58 },
+  { day: "Wed", value: 74 },
+  { day: "Thu", value: 69 },
+  { day: "Fri", value: 65 },
+  { day: "Sat", value: 71 },
+  { day: "Sun", value: 75 },
+];
+
+// Emotion categories trend
+const EMOTION_CATEGORIES = [
+  { emotion: "Anxiety", Mon: 40, Tue: 32, Wed: 28, Thu: 35, Fri: 22, Sat: 18, Sun: 20 },
+  { emotion: "Motivation", Mon: 25, Tue: 31, Wed: 40, Thu: 38, Fri: 35, Sat: 30, Sun: 42 },
+  { emotion: "Calm", Mon: 30, Tue: 28, Wed: 35, Thu: 32, Fri: 38, Sat: 40, Sun: 45 },
+];
+
+// Heatmap fixed data (0–4 intensity, 30 dana)
+const HEATMAP: number[] = [
+  0, 1, 2, 3, 4,
+  1, 2, 3, 4, 0,
+  2, 3, 4, 3, 2,
+  1, 0, 1, 2, 3,
+  4, 3, 2, 1, 0,
+  1, 2, 3, 4, 2,
+];
+
+const HEATMAP_COLORS = [
+  "bg-gray-200",
+  "bg-blue-200",
+  "bg-blue-400",
+  "bg-blue-600",
+  "bg-blue-800",
+];
+
 export default function TrendsPage() {
-  // FILTERI
-  const [range, setRange] = useState<"week" | "month" | "quarter" | "year">(
-    "week"
-  );
-  const [chartType, setChartType] = useState<"line" | "bar">("line");
-
-  // DATA ZA EMOCIONALNI TREND
-  const emotionalTrend = [
-    { day: "Mon", value: 62 },
-    { day: "Tue", value: 58 },
-    { day: "Wed", value: 74 },
-    { day: "Thu", value: 69 },
-    { day: "Fri", value: 65 },
-    { day: "Sat", value: 71 },
-    { day: "Sun", value: 75 },
-  ];
-
-  // EMOTIONAL CATEGORY TRENDS
-  const emotionCategories = [
-    { emotion: "Anxiety", Mon: 40, Tue: 32, Wed: 28, Thu: 35, Fri: 22, Sat: 18, Sun: 20 },
-    { emotion: "Motivation", Mon: 25, Tue: 31, Wed: 40, Thu: 38, Fri: 35, Sat: 30, Sun: 42 },
-    { emotion: "Calm", Mon: 30, Tue: 28, Wed: 35, Thu: 32, Fri: 38, Sat: 40, Sun: 45 },
-  ];
-
-  // HEATMAP (daily mood)
-  const heatmap = Array.from({ length: 30 }, () => Math.floor(Math.random() * 5));
-
-  const heatmapColors = [
-    "bg-gray-200",
-    "bg-blue-200",
-    "bg-blue-400",
-    "bg-blue-600",
-    "bg-blue-800",
-  ];
+  const [range, setRange] = useState<Range>("week");
+  const [chartType, setChartType] = useState<ChartType>("line");
 
   return (
     <div className="space-y-8 px-4 md:px-8">
-
       {/* HEADER */}
       <div>
         <h1 className="text-xl md:text-2xl font-semibold">Trends</h1>
@@ -65,18 +73,17 @@ export default function TrendsPage() {
 
       {/* FILTER BUTTONS */}
       <div className="flex gap-3 flex-wrap">
-        {["week", "month", "quarter", "year"].map((r) => (
+        {ranges.map((r) => (
           <Button
             key={r}
             variant={range === r ? "default" : "outline"}
             size="sm"
-            onClick={() => setRange(r as any)}
+            onClick={() => setRange(r)}
           >
             {r.toUpperCase()}
           </Button>
         ))}
 
-        {/* Chart toggle */}
         <Button
           variant="secondary"
           size="sm"
@@ -97,7 +104,7 @@ export default function TrendsPage() {
         <CardContent className="h-64 md:h-80">
           <ResponsiveContainer width="100%" height="100%">
             {chartType === "line" ? (
-              <LineChart data={emotionalTrend}>
+              <LineChart data={EMOTIONAL_TREND}>
                 <XAxis dataKey="day" stroke="#888" />
                 <YAxis stroke="#888" domain={[40, 100]} />
                 <Tooltip />
@@ -111,7 +118,7 @@ export default function TrendsPage() {
                 />
               </LineChart>
             ) : (
-              <BarChart data={emotionalTrend}>
+              <BarChart data={EMOTIONAL_TREND}>
                 <XAxis dataKey="day" stroke="#888" />
                 <YAxis stroke="#888" />
                 <Tooltip />
@@ -130,10 +137,10 @@ export default function TrendsPage() {
 
         <CardContent>
           <div className="grid grid-cols-10 gap-1">
-            {heatmap.map((level, i) => (
+            {HEATMAP.map((level, i) => (
               <div
                 key={i}
-                className={clsx("w-6 h-6 rounded", heatmapColors[level])}
+                className={clsx("w-6 h-6 rounded", HEATMAP_COLORS[level])}
                 title={`Day ${i + 1}: mood level ${level}`}
               />
             ))}
@@ -151,22 +158,23 @@ export default function TrendsPage() {
         </CardHeader>
 
         <CardContent className="space-y-6">
-
-          {emotionCategories.map((emotionData) => (
+          {EMOTION_CATEGORIES.map((emotionData) => (
             <div key={emotionData.emotion}>
               <p className="font-medium mb-2">{emotionData.emotion}</p>
 
               <div className="h-40 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={[
-                    { day: "Mon", value: emotionData.Mon },
-                    { day: "Tue", value: emotionData.Tue },
-                    { day: "Wed", value: emotionData.Wed },
-                    { day: "Thu", value: emotionData.Thu },
-                    { day: "Fri", value: emotionData.Fri },
-                    { day: "Sat", value: emotionData.Sat },
-                    { day: "Sun", value: emotionData.Sun },
-                  ]}>
+                  <LineChart
+                    data={[
+                      { day: "Mon", value: emotionData.Mon },
+                      { day: "Tue", value: emotionData.Tue },
+                      { day: "Wed", value: emotionData.Wed },
+                      { day: "Thu", value: emotionData.Thu },
+                      { day: "Fri", value: emotionData.Fri },
+                      { day: "Sat", value: emotionData.Sat },
+                      { day: "Sun", value: emotionData.Sun },
+                    ]}
+                  >
                     <XAxis dataKey="day" stroke="#aaa" />
                     <YAxis stroke="#aaa" domain={[0, 50]} />
                     <Tooltip />
@@ -182,10 +190,8 @@ export default function TrendsPage() {
               </div>
             </div>
           ))}
-
         </CardContent>
       </Card>
-
     </div>
   );
 }

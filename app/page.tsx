@@ -11,7 +11,7 @@ export default function DashboardPage() {
         {/* Mindset Score */}
         <Card className="col-span-1 md:col-span-1">
           <CardHeader>
-            <CardTitle>Today's Mindset Score</CardTitle>
+            <CardTitle>Today&apos;s Mindset Score</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-5xl font-bold">72</div>

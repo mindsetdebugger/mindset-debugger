@@ -112,7 +112,7 @@ export default function RoadmapPage() {
         <div>
           <h1 className="text-xl md:text-2xl font-semibold">Roadmap</h1>
           <p className="text-xs md:text-sm text-muted-foreground">
-            What's being built, shipped or planned next.
+            What&apos;s being built, shipped or planned next.
           </p>
         </div>
 
@@ -244,12 +244,9 @@ export default function RoadmapPage() {
             <select
               className="border rounded p-2 text-sm"
               value={newItem.status}
-              onChange={(e) =>
-                setNewItem({
-                  ...newItem,
-                  status: e.target.value as any,
-                })
-              }
+onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+  setNewItem({ ...newItem, status: e.target.value as RoadmapItem["status"] })
+}
             >
               <option>Planned</option>
               <option>In Progress</option>
@@ -260,12 +257,9 @@ export default function RoadmapPage() {
             <select
               className="border rounded p-2 text-sm"
               value={newItem.priority}
-              onChange={(e) =>
-                setNewItem({
-                  ...newItem,
-                  priority: e.target.value as any,
-                })
-              }
+   onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+  setNewItem({ ...newItem, priority: e.target.value as RoadmapItem["priority"] })
+}
             >
               <option>High</option>
               <option>Medium</option>

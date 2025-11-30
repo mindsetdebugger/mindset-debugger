@@ -18,7 +18,7 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base md:text-lg">Today's Mindset Score</CardTitle>
+            <CardTitle className="text-base md:text-lg">Today&apos;s Mindset Score</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-4xl md:text-5xl font-bold">72</div>

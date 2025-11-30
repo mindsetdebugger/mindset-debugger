@@ -9,7 +9,7 @@ export default function NewEntryPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [analysis, setAnalysis] = useState<any>(null);
+  const [analysis, setAnalysis] = useState<unknown>(null);
 
   async function analyze() {
     setLoading(true);
