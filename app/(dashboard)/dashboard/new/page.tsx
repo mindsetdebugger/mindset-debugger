@@ -9,11 +9,21 @@ export default function NewEntryPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [analysis, setAnalysis] = useState<unknown>(null);
+  const [analysis, setAnalysis] = useState<{emotion: string, summary: string, biases : string[], recommendation: string}>({
+    emotion: ``,
+    summary: ``,
+    biases: [``],
+    recommendation: ``
+  });
 
   async function analyze() {
     setLoading(true);
-    setAnalysis(null);
+    setAnalysis({
+    emotion: ``,
+    summary: ``,
+    biases: [``],
+    recommendation: ``
+  });
 
     setTimeout(() => {
       setAnalysis({
