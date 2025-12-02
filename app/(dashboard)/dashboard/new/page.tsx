@@ -13,6 +13,7 @@ import {
   Target,
   RotateCcw,
   CheckCircle,
+  XCircle,
 } from "lucide-react";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -57,10 +58,16 @@ type DeepAnalysis = {
     cbt: string;
     logic: string;
     self_compassion: string;
+    growth_mindset_reframe : string;
+    meta_perspective_reframe : string;
+    action_reframe : string;
+    values_based_reframe : string;
   };
 
   actions: {
-    today_action: string;
+    today_micro_step: string;
+    momentum_builder : string;
+    avoid_this: string;
     this_week_focus: string;
   };
 
@@ -415,42 +422,219 @@ export default function NewEntryPage() {
             </div>
           </Section>
 
-          {/* REFRAMES */}
-          <Section title="Reframes" icon={RotateCcw}>
-            <div className="space-y-3">
-              {Object.entries(analysis.reframes).map(([key, value], i) => (
-                <div key={i} className="flex justify-between py-1">
-                  <p><strong>{key}:</strong> {value}</p>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => saveInsight("reframe", key, value)}
-                  >
-                    <Star size={15} />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </Section>
+{/* REFRAMES */}
+<Section title="Reframes" icon={RotateCcw}>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-          {/* ACTIONS */}
-          <Section title="Actions" icon={CheckCircle}>
-            <div className="flex justify-between items-start">
-              <div>
-                <p><strong>Today:</strong> {analysis.actions.today_action}</p>
-                <p><strong>This Week:</strong> {analysis.actions.this_week_focus}</p>
-              </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() =>
-                  saveInsight("actions", "Action Steps", JSON.stringify(analysis.actions))
-                }
-              >
-                <Star size={15} />
-              </Button>
+    {Object.entries(analysis.reframes).map(([key, value]) => {
+      const descriptions: Record<string, string> = {
+        stoic: "Focus on what you can control.",
+        cbt: "Challenge distortions and create balanced thinking.",
+        logic: "Use objective facts to reduce emotional reasoning.",
+        self_compassion: "Respond with kindness instead of self-judgment.",
+        growth_mindset_reframe: "Struggle = growth, not failure.",
+        meta_perspective_reframe: "Zoom out and see the bigger picture.",
+        action_reframe: "Shift from rumination to small practical steps.",
+        values_based_reframe: "Connect your response to your core values.",
+      };
+
+      const icons: Record<string, any> = {
+        stoic: Target,
+        cbt: Brain,
+        logic: Lightbulb,
+        self_compassion: Heart,
+        growth_mindset_reframe: Star,
+        meta_perspective_reframe: Quote,
+        action_reframe: CheckCircle,
+        values_based_reframe: FileText,
+      };
+
+      const IconComponent = icons[key] || RotateCcw;
+
+      return (
+        <motion.div
+          key={key}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+          className="border rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition flex flex-col gap-3"
+        >
+          {/* Header */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+              <IconComponent size={18} className="text-indigo-600 dark:text-indigo-300" />
             </div>
-          </Section>
+
+            <div>
+              <h4 className="font-semibold capitalize">
+                {key.replace(/_/g, " ")}
+              </h4>
+              <p className="text-xs text-slate-500">
+                {descriptions[key] || "Reframe perspective shift"}
+              </p>
+            </div>
+          </div>
+
+          {/* Reframe Text */}
+          <p className="text-sm leading-relaxed">{value}</p>
+
+          {/* Save */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => saveInsight("reframe", key, value)}
+            className="self-end"
+          >
+            <Star size={16} />
+          </Button>
+        </motion.div>
+      );
+    })}
+
+  </div>
+</Section>
+
+
+
+{/* ACTIONS */}
+<Section title="Actions" icon={CheckCircle}>
+  <div className="space-y-6">
+
+    {/* TODAY MICRO-STEP */}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl p-6 bg-indigo-50/60 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 shadow-sm"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-indigo-200 dark:bg-indigo-800 flex items-center justify-center">
+            <CheckCircle size={18} className="text-indigo-700 dark:text-indigo-300" />
+          </div>
+          <h4 className="font-semibold text-slate-800 dark:text-slate-100">
+            Today – Micro Step
+          </h4>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            saveInsight("action_today_micro", "Micro Step", analysis.actions.today_micro_step)
+          }
+        >
+          <Star size={16} />
+        </Button>
+      </div>
+
+      <p className="mt-3 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+        {analysis.actions.today_micro_step}
+      </p>
+    </motion.div>
+
+    {/* MOMENTUM BUILDER */}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.05 }}
+      className="rounded-2xl p-6 bg-blue-50/60 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 shadow-sm"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center">
+            <Lightbulb size={18} className="text-blue-700 dark:text-blue-300" />
+          </div>
+          <h4 className="font-semibold text-slate-800 dark:text-slate-100">
+            Momentum Builder
+          </h4>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            saveInsight("action_momentum", "Momentum Builder", analysis.actions.momentum_builder)
+          }
+        >
+          <Star size={16} />
+        </Button>
+      </div>
+
+      <p className="mt-3 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+        {analysis.actions.momentum_builder}
+      </p>
+    </motion.div>
+
+    {/* AVOID THIS */}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="rounded-2xl p-6 bg-red-50/60 dark:bg-red-900/30 border border-red-100 dark:border-red-800 shadow-sm"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-red-200 dark:bg-red-800 flex items-center justify-center">
+            <XCircle size={18} className="text-red-700 dark:text-red-300" />
+          </div>
+          <h4 className="font-semibold text-slate-800 dark:text-slate-100">
+            Avoid This
+          </h4>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            saveInsight("action_avoid", "Avoid This", analysis.actions.avoid_this)
+          }
+        >
+          <Star size={16} />
+        </Button>
+      </div>
+
+      <p className="mt-3 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+        {analysis.actions.avoid_this}
+      </p>
+    </motion.div>
+
+    {/* WEEKLY FOCUS */}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.15 }}
+      className="rounded-2xl p-6 bg-amber-50/70 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 shadow-sm"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-amber-200 dark:bg-amber-700/50 flex items-center justify-center">
+            <Target size={18} className="text-amber-700 dark:text-amber-200" />
+          </div>
+          <h4 className="font-semibold text-slate-800 dark:text-slate-100">
+            This Week – Focus
+          </h4>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            saveInsight("action_week", "Weekly Focus", analysis.actions.this_week_focus)
+          }
+        >
+          <Star size={16} />
+        </Button>
+      </div>
+
+      <p className="mt-3 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+        {analysis.actions.this_week_focus}
+      </p>
+    </motion.div>
+
+  </div>
+</Section>
+
+
 
         </Card>
       )}

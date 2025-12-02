@@ -62,15 +62,21 @@ JSON STRUCTURE:
 
   "reframes": {
     "stoic": "...",
-    "cbt": "...",
+    "cognitive_behavioral_therapy": "...",
     "logic": "...",
-    "self_compassion": "..."
+    "self_compassion": "...",
+    "growth_mindset_reframe" : "...",
+    "meta_perspective_reframe" : "...",
+    "action_reframe" : "...",
+    "values_based_reframe" : "..."
   },
 
-  "actions": {
-    "today_action": "...",
-    "this_week_focus": "..."
-  },
+"actions": {
+  "today_micro_step": "...",
+  "momentum_builder": "...",
+  "avoid_this": "...",
+  "this_week_focus": "..."
+}
 
   "mindset_score": 0,
   "ai_insight_today": "...",
