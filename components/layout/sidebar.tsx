@@ -1,4 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { supabaseBrowser } from "@/lib/supabase/client";
+
 import {
   Home,
   Search,
@@ -10,6 +15,14 @@ import {
 } from "lucide-react";
 
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
+  const router = useRouter();
+  const supabase = supabaseBrowser();
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/auth");
+  }
+
   const menu = [
     { href: "/dashboard", label: "Home", icon: Home },
     { href: "/dashboard/insights", label: "Insights", icon: Search },
@@ -40,7 +53,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       </nav>
 
       <div className="px-4 py-4 border-t">
-        <button className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent hover:text-accent-foreground w-full text-left">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent hover:text-accent-foreground w-full text-left"
+        >
           <LogOut size={18} />
           Logout
         </button>

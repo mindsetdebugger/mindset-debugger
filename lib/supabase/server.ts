@@ -1,27 +1,45 @@
-import { createServerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 
 export function supabaseServer() {
-  const cookieStore = cookies(); // returns RequestCookies
+  const cookieStore = cookies();
+
+  function safeGet(name: string) {
+    try {
+      // Next.js 14/15/16 API
+      const direct = cookieStore.get(name);
+      if (direct) return direct.value;
+
+      // fallback za edge runtimes
+      const all = cookieStore.getAll();
+      const found = all.find((c) => c.name === name);
+      return found?.value;
+    } catch {
+      return undefined;
+    }
+  }
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: (name: string) => {
+        get(name) {
+          return safeGet(name);
+        },
+        set(name, value, options) {
           try {
-            return cookieStore.get(name)?.value;
+            cookieStore.set({ name, value, ...options });
           } catch {
-            return undefined;
+            /* ignore edge writes */
           }
         },
-        set: () => {
-          // Next.js 14 server components CANNOT set cookies here.
-          // Supabase will fallback safely.
-        },
-        remove: () => {
-          // Same here – server components cannot delete cookies.
+        remove(name, options) {
+          try {
+            cookieStore.delete({ name, ...options });
+          } catch {
+            /* ignore */
+          }
         },
       },
     }
