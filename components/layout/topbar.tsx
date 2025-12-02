@@ -1,17 +1,23 @@
-// components/layout/topbar.tsx
 "use client";
 
-import { useState } from "react";
-import { Avatar } from "@/components/ui/avatar"; // ako nemaš ovu shadcn komponentu, dodam
+import { Menu } from "lucide-react";
 
-export default function Topbar() {
+export default function Topbar({ onMenu }: { onMenu?: () => void }) {
   return (
-    <header className="h-16 border-b flex items-center justify-between px-8 bg-background">
-      <div className="text-lg font-medium">Dashboard</div>
+    <header className="h-16 border-b flex items-center justify-between px-4 md:px-8 bg-background/80 backdrop-blur-md">
+      
+      {/* Mobile menu button */}
+      <button
+        className="md:hidden p-2 rounded hover:bg-accent"
+        onClick={onMenu}
+      >
+        <Menu size={24} />
+      </button>
 
-      <div className="flex items-center gap-3">
-        <Avatar />
-        <span className="text-sm opacity-70">Ivan</span>
+      <h1 className="text-lg font-semibold">Mindset Debugger</h1>
+
+      <div className="hidden md:block">
+        {/* right content (avatar, etc) */}
       </div>
     </header>
   );
