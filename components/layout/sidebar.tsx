@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 import {
@@ -12,9 +12,12 @@ import {
   Target,
   Settings,
   LogOut,
+  Infinity,
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
+  const pathname = usePathname();
   const router = useRouter();
   const supabase = supabaseBrowser();
 
@@ -26,36 +29,77 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const menu = [
     { href: "/dashboard", label: "Home", icon: Home },
     { href: "/dashboard/insights", label: "Insights", icon: Search },
-    { href: "/dashboard/history", label: "History", icon: BookText },
     { href: "/dashboard/trends", label: "Trends", icon: LineChart },
     { href: "/dashboard/roadmap", label: "Roadmap", icon: Target },
+    { href: "/dashboard/history", label: "History", icon: BookText },
     { href: "/dashboard/settings", label: "Settings", icon: Settings },
   ];
 
   return (
-    <aside className="w-64 h-full border-r bg-card flex flex-col">
-      <div className="h-16 flex items-center px-6 text-xl font-semibold border-b">
-        🧠 Mindset
+    <aside
+      className="
+        w-64 h-screen
+        border-r border-slate-200
+        bg-white/80 backdrop-blur-xl
+        flex flex-col
+      "
+    >
+
+      {/* PERFECTLY ALIGNED HEADER */}
+      <div className="h-14 flex items-center gap-2 px-6 border-b border-slate-200">
+        <Infinity className="w-5 h-5 text-indigo-600" />
+        <span className="text-base font-semibold tracking-tight text-slate-800">
+          MindsetDebugger
+        </span>
       </div>
 
-      <nav className="flex-1 px-4 py-6 space-y-2">
-        {menu.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={() => onClose?.()}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent hover:text-accent-foreground transition"
-          >
-            <item.icon size={18} />
-            {item.label}
-          </Link>
-        ))}
+      {/* NAVIGATION */}
+      <nav className="flex-1 px-4 py-6 space-y-1">
+        {menu.map((item) => {
+          const active = pathname === item.href;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => onClose?.()}
+              className={`
+                relative flex items-center gap-3 px-3 py-2 rounded-lg 
+                text-sm transition-colors duration-150
+                ${
+                  active
+                    ? "bg-indigo-50 text-indigo-700 font-medium"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }
+              `}
+            >
+              {/* ACTIVE INDICATOR */}
+              {active && (
+                <motion.div
+                  layoutId="activeRoute"
+                  className="absolute left-0 top-0 bottom-0 w-1 rounded-r bg-indigo-600"
+                />
+              )}
+
+              <item.icon
+                size={18}
+                className={`${active ? "text-indigo-700" : "text-slate-500"}`}
+              />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className="px-4 py-4 border-t">
+      {/* LOGOUT */}
+      <div className="px-4 py-4 border-t border-slate-200">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent hover:text-accent-foreground w-full text-left"
+          className="
+            flex items-center gap-3 px-3 py-2 w-full text-left
+            rounded-lg hover:bg-red-50 hover:text-red-600
+            text-slate-600 transition
+          "
         >
           <LogOut size={18} />
           Logout

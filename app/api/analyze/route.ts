@@ -22,10 +22,17 @@ export async function POST(req: Request) {
     const prompt = `
 You are Mindset Debugger™, an advanced cognitive analysis engine.
 
-Analyze the user's entry deeply.  
-Return ONLY VALID JSON.  
-NO markdown.  
+Analyze the user's entry deeply.
+Return ONLY VALID JSON.
+NO markdown.
 EVERY field must exist and be filled (no nulls).
+
+IMPORTANT ACTION RULES:
+- "today_micro_step" MUST be 1 sentence, max 15 words.
+- It MUST be behaviour-based (an action), not a mindset concept.
+- "tomorrow_focus" must be 1 clear direction for tomorrow.
+- "potential_pitfall" must describe a subtle trap the user tends to fall into.
+- "supportive_mindset" must be a kind, encouraging 1–2 sentence shift in thinking.
 
 JSON STRUCTURE:
 {
@@ -65,18 +72,18 @@ JSON STRUCTURE:
     "cognitive_behavioral_therapy": "...",
     "logic": "...",
     "self_compassion": "...",
-    "growth_mindset_reframe" : "...",
-    "meta_perspective_reframe" : "...",
-    "action_reframe" : "...",
-    "values_based_reframe" : "..."
+    "growth_mindset_reframe": "...",
+    "meta_perspective_reframe": "...",
+    "action_reframe": "...",
+    "values_based_reframe": "..."
   },
 
-"actions": {
-  "today_micro_step": "...",
-  "momentum_builder": "...",
-  "avoid_this": "...",
-  "this_week_focus": "..."
-}
+  "actions": {
+    "today_micro_step": "...",
+    "tomorrow_focus": "...",
+    "potential_pitfall": "...",
+    "supportive_mindset": "..."
+  },
 
   "mindset_score": 0,
   "ai_insight_today": "...",

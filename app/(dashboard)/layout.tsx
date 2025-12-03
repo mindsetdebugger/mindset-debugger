@@ -13,33 +13,33 @@ export default function DashboardLayout({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
+    <div className="h-screen w-full flex bg-gradient-to-b from-white to-slate-50 text-foreground">
 
-      {/* Sidebar DESKTOP */}
-      <div className="hidden md:block">
-        <Sidebar />
+      {/* SIDEBAR DESKTOP */}
+      <div className="hidden md:flex">
+        <div className="h-screen w-64 border-r border-slate-200 bg-white shadow-sm fixed left-0 top-0">
+          <Sidebar />
+        </div>
       </div>
 
-      {/* SIDEBAR MOBILE OVERLAY */}
+      {/* MOBILE SIDEBAR */}
       <AnimatePresence>
         {open && (
           <>
-            {/* Dark background */}
             <motion.div
-              className="fixed inset-0 bg-black/40 z-40 md:hidden"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setOpen(false)}
             />
 
-            {/* Mobile sidebar */}
             <motion.div
-              className="fixed top-0 left-0 h-full w-72 z-50 md:hidden bg-background shadow-xl"
-              initial={{ x: -300 }}
+              className="fixed top-0 left-0 h-full w-72 z-50 md:hidden bg-white shadow-2xl"
+              initial={{ x: -260 }}
               animate={{ x: 0 }}
-              exit={{ x: -300 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              exit={{ x: -260 }}
+              transition={{ type: "spring", stiffness: 260, damping: 28 }}
             >
               <Sidebar onClose={() => setOpen(false)} />
             </motion.div>
@@ -47,16 +47,22 @@ export default function DashboardLayout({
         )}
       </AnimatePresence>
 
-      {/* MAIN COLUMN */}
-      <div className="flex flex-col flex-1">
+      {/* MAIN AREA */}
+      <div className="flex flex-col flex-1 md:ml-64 h-screen">
 
-        {/* Topbar controls mobile sidebar */}
-        <Topbar onMenu={() => setOpen(true)} />
+        {/* FIXED TOPBAR */}
+        <div className="sticky top-0 z-20 backdrop-blur-xl bg-white/70 border-b border-slate-200 shadow-sm">
+          <Topbar onMenu={() => setOpen(true)} />
+        </div>
 
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
-          {children}
-        </main>
+        {/* FULL-WIDTH SCROLL AREA */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Content wrapper (not scrollable) */}
+          <div className="w-full max-w-6xl mx-auto px-4 md:px-10 py-10 space-y-10">
+            {children}
+          </div>
+        </div>
+
       </div>
     </div>
   );
