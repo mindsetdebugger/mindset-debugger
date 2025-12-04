@@ -16,32 +16,46 @@ export async function POST(req: Request) {
       apiKey: process.env.OPENAI_API_KEY!,
     });
 
-    // ------------------------------------------------------------
-    //  FULL DEEP ANALYSIS PROMPT (with mindset_score + insight)
-    // ------------------------------------------------------------
     const prompt = `
 You are Mindset Debugger™, an advanced cognitive analysis engine.
 
-Analyze the user's entry deeply.
+Analyze the user's entry deeply using:
+- cognitive science
+- emotional analytics
+- behavioral psychology
+- motivation science
+- pattern detection
+- long-term emotional trend modeling
+
+Write the entire analysis in SECOND PERSON (“ti”, “tvoje misli…”, “kod tebe…”).
+
 Return ONLY VALID JSON.
 NO markdown.
-EVERY field must exist and be filled (no nulls).
+NO explanations.
+EVERY field must be present. No nulls.
 
-IMPORTANT ACTION RULES:
-- "today_micro_step" MUST be 1 sentence, max 15 words.
-- It MUST be behaviour-based (an action), not a mindset concept.
-- "tomorrow_focus" must be 1 clear direction for tomorrow.
-- "potential_pitfall" must describe a subtle trap the user tends to fall into.
-- "supportive_mindset" must be a kind, encouraging 1–2 sentence shift in thinking.
+====================================================
+ACTION LOGIC RULES:
+====================================================
+- "today_micro_step" MUST be 1 behavioural instruction, ≤ 15 words, doable in under 2 minutes.
+- Must begin with an action verb (“Napravi…”, “Udahni…”, “Uzmi 1 minutu za…”).
+- "tomorrow_focus" = 1 clear direction you need to follow.
+- "potential_pitfall" = subtle trap you often fall into.
+- "supportive_mindset" = 1–2 warm sentences addressed to YOU.
+- "ai_insight_today" = 2–4 dense sentences.
 
+====================================================
 JSON STRUCTURE:
+====================================================
 {
   "summary": "...",
 
   "emotions": {
     "primary": [{ "emotion": "...", "intensity": 0 }],
     "secondary": [{ "emotion": "...", "intensity": 0 }],
-    "body_sensations": ["..."]
+    "body_sensations": ["..."],
+    "emotion_direction": "rising | falling | stable",
+    "emotion_regulation_capacity": 0
   },
 
   "cognitive_patterns": [
@@ -67,6 +81,15 @@ JSON STRUCTURE:
 
   "root_cause": "...",
 
+  "insight_clusters": {
+    "emotional_themes": ["..."],
+    "thinking_trends": ["..."],
+    "common_triggers": ["..."],
+    "growth_signals": ["..."],
+    "protective_factors": ["..."],
+    "vulnerabilities": ["..."]
+  },
+
   "reframes": {
     "stoic": "...",
     "cognitive_behavioral_therapy": "...",
@@ -85,6 +108,21 @@ JSON STRUCTURE:
     "supportive_mindset": "..."
   },
 
+  "trends": {
+    "short_term_patterns": ["..."],
+    "long_term_patterns": ["..."],
+    "energy_trend": "up | down | neutral",
+    "motivation_trend": "up | down | neutral"
+  },
+
+  "stats": {
+    "emotional_stability_score": 0,
+    "motivation_score": 0,
+    "stress_marker": 0,
+    "resilience_marker": 0,
+    "clarity_score": 0
+  },
+
   "mindset_score": 0,
   "ai_insight_today": "...",
 
@@ -92,15 +130,18 @@ JSON STRUCTURE:
 
   "meta": {
     "analysis_confidence": 0.0,
-    "distress_level": 0
+    "distress_level": 0,
+    "category": "stress | fear | motivation | relationships | identity | growth | burnout | uncertainty | frustration | overwhelm | sadness | mixed"
   }
 }
 
+====================================================
 RULES:
-- "mindset_score" MUST be an integer 0–100.
-- "ai_insight_today" MUST be 2–4 sentences, short, high-value, emotionally intelligent.
-- No markdown.
-- No extra text.
+- No markdown
+- No null fields
+- All numbers 0–100
+- Write everything in SECOND PERSON
+====================================================
 
 USER HISTORY SUMMARY:
 ${historySummary || "None"}
@@ -112,7 +153,7 @@ ${text}
     const response = await client.responses.create({
       model: "gpt-4.1",
       input: [
-        { role: "system", content: "Return ONLY raw JSON. No markdown." },
+        { role: "system", content: "Return ONLY raw JSON" },
         { role: "user", content: prompt }
       ],
     });
@@ -121,17 +162,14 @@ ${text}
     const json = JSON.parse(raw);
 
     return NextResponse.json(
-      {
-        success: true,
-        analysis: json,
-      },
+      { success: true, analysis: json },
       { status: 200 }
     );
 
   } catch (err: any) {
     console.error("ANALYZE ERROR:", err);
     return NextResponse.json(
-      { error: err.message ?? "Internal server error" },
+      { error: err.message },
       { status: 500 }
     );
   }

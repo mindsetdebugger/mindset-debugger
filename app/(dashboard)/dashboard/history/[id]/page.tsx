@@ -1,43 +1,139 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
 import {
-  Brain,
-  Heart,
-  MessageSquareQuote,
-  ChevronRight,
   ArrowLeft,
-  Target,
-  Lightbulb,
-  ListChecks,
-  AlertTriangle,
+  ArrowRight,
+  Download,
+  Activity,
+  CalendarDays,
+  Tag,
+  Brain,
+  HeartPulse,
   Sparkles,
+  Quote,
+  Target,
+  ListTree,
 } from "lucide-react";
-import Link from "next/link";
+
+type EntryRow = {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  analysis: any | null;
+};
+
+// emotion style mapping (same vibe kao Insights)
+const emotionStyles: Record<
+  string,
+  { emoji: string; bg: string; text: string; ring: string }
+> = {
+  joy: {
+    emoji: "😊",
+    bg: "bg-amber-50",
+    text: "text-amber-800",
+    ring: "ring-amber-200",
+  },
+  happiness: {
+    emoji: "😄",
+    bg: "bg-amber-50",
+    text: "text-amber-800",
+    ring: "ring-amber-200",
+  },
+  calm: {
+    emoji: "😌",
+    bg: "bg-sky-50",
+    text: "text-sky-800",
+    ring: "ring-sky-200",
+  },
+  anxiety: {
+    emoji: "😰",
+    bg: "bg-indigo-50",
+    text: "text-indigo-900",
+    ring: "ring-indigo-200",
+  },
+  stress: {
+    emoji: "😵‍💫",
+    bg: "bg-rose-50",
+    text: "text-rose-800",
+    ring: "ring-rose-200",
+  },
+  sadness: {
+    emoji: "😢",
+    bg: "bg-blue-50",
+    text: "text-blue-800",
+    ring: "ring-blue-200",
+  },
+  hope: {
+    emoji: "🌱",
+    bg: "bg-emerald-50",
+    text: "text-emerald-800",
+    ring: "ring-emerald-200",
+  },
+  frustration: {
+    emoji: "😤",
+    bg: "bg-red-50",
+    text: "text-red-800",
+    ring: "ring-red-200",
+  },
+  fear: {
+    emoji: "😨",
+    bg: "bg-indigo-50",
+    text: "text-indigo-800",
+    ring: "ring-indigo-200",
+  },
+};
+
+function styleForEmotion(name: string) {
+  const key = name?.toLowerCase?.().trim();
+  return (
+    emotionStyles[key] || {
+      emoji: "🧠",
+      bg: "bg-slate-50",
+      text: "text-slate-800",
+      ring: "ring-slate-200",
+    }
+  );
+}
+
+function scoreColor(score: number | null | undefined) {
+  if (score == null) return "text-slate-500";
+  if (score >= 70) return "text-emerald-600";
+  if (score >= 40) return "text-amber-500";
+  return "text-rose-500";
+}
 
 export default function HistoryDetailPage() {
   const params = useParams();
   const id = params?.id as string;
-
+  const router = useRouter();
   const supabase = supabaseBrowser();
 
-  const [entry, setEntry] = useState<any>(null);
+  const [entries, setEntries] = useState<EntryRow[]>([]);
+  const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // LOAD ENTRY
+  // ===========================
+  // LOAD ALL ENTRIES + FIND CURRENT
+  // ===========================
   useEffect(() => {
-    if (!id) return;
+    (async () => {
+      if (!id) return;
+      setLoading(true);
 
-    const load = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
+      const { data: session } = await supabase.auth.getUser();
+      const user = session?.user;
       if (!user) {
+        setEntries([]);
+        setCurrentIndex(null);
         setLoading(false);
         return;
       }
@@ -45,280 +141,608 @@ export default function HistoryDetailPage() {
       const { data, error } = await supabase
         .from("entries")
         .select("*")
-        .eq("id", id)
         .eq("user_id", user.id)
-        .single();
+        .order("created_at", { ascending: false });
 
-      if (!error) setEntry(data);
+      if (!error && data) {
+        const list = data as EntryRow[];
+        setEntries(list);
+
+        const idx = list.findIndex((e) => e.id === id);
+        setCurrentIndex(idx >= 0 ? idx : null);
+      } else {
+        setEntries([]);
+        setCurrentIndex(null);
+      }
 
       setLoading(false);
-    };
-
-    load();
+    })();
   }, [id, supabase]);
 
-  if (loading)
-    return (
-      <div className="px-6 py-10 text-slate-500">Loading entry…</div>
-    );
+  const entry = useMemo(() => {
+    if (currentIndex == null || currentIndex < 0 || currentIndex >= entries.length)
+      return null;
+    return entries[currentIndex];
+  }, [currentIndex, entries]);
 
-  if (!entry)
+  const prevId =
+    currentIndex != null && currentIndex < entries.length - 1
+      ? entries[currentIndex + 1]?.id
+      : null; // older entry
+
+  const nextId =
+    currentIndex != null && currentIndex > 0
+      ? entries[currentIndex - 1]?.id
+      : null; // newer entry
+
+  function goPrev() {
+    if (prevId) router.push(`/dashboard/history/${prevId}`);
+  }
+
+  function goNext() {
+    if (nextId) router.push(`/dashboard/history/${nextId}`);
+  }
+
+  function handleExport() {
+    if (typeof window !== "undefined") {
+      window.print(); // user može odabrati "Save as PDF"
+    }
+  }
+
+  if (loading) {
     return (
-      <div className="px-6 py-10 text-red-500">
-        Entry not found or you do not have permission.
+      <div className="px-4 md:px-10 py-10 text-slate-500">
+        Loading entry…
       </div>
     );
+  }
 
-  const analysis = entry.analysis || {};
-  const actions = analysis.actions || {};
-  const emotions = analysis?.emotions?.primary || [];
+  if (!entry) {
+    return (
+      <div className="px-4 md:px-10 py-10">
+        <Link
+          href="/dashboard/history"
+          className="inline-flex items-center text-sm text-indigo-600 mb-4"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          Back to history
+        </Link>
+        <p className="text-red-500 text-sm">
+          Entry not found or you do not have permission.
+        </p>
+      </div>
+    );
+  }
 
-  const date = new Date(entry.created_at).toLocaleDateString("en-GB", {
+  const a = entry.analysis || {};
+  const created = new Date(entry.created_at);
+  const dateLabel = created.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
+  const timeLabel = created.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const primaryEmotions: any[] = a.emotions?.primary || [];
+  const secondaryEmotions: any[] = a.emotions?.secondary || [];
+  const bodySensations: string[] = a.emotions?.body_sensations || [];
+  const tags: string[] = a.tags || [];
 
   return (
-    <div className="space-y-10 px-4 md:px-10 py-10">
+    <div className="px-4 md:px-10 py-10 space-y-8 print:px-6 print:py-6">
+      {/* Top bar */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <Link
+            href="/dashboard/history"
+            className="inline-flex items-center text-sm text-indigo-600 mb-2"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to history
+          </Link>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
+            Entry Details
+            <span className="inline-flex items-center gap-1 text-xs rounded-full bg-slate-900 text-white px-2 py-1">
+              <CalendarDays className="w-3 h-3" />
+              {dateLabel}
+            </span>
+          </h1>
+          <p className="text-slate-500 text-sm mt-1 flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <Activity className="w-3 h-3 text-slate-400" />
+              <span className={`font-semibold ${scoreColor(a.mindset_score)}`}>
+                Mindset score: {a.mindset_score ?? "—"}
+              </span>
+            </span>
+            <span>·</span>
+            <span className="flex items-center gap-1 text-xs text-slate-500">
+              <CalendarDays className="w-3 h-3" />
+              {timeLabel}
+            </span>
+          </p>
+        </div>
 
-      {/* BACK LINK */}
-      <Link href="/dashboard/history" className="flex items-center gap-2 text-slate-500 hover:text-slate-700 mb-4">
-        <ArrowLeft className="w-4 h-4" />
-        Back to history
-      </Link>
+        <div className="flex flex-wrap gap-2 md:justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            className="flex items-center gap-1"
+          >
+            <Download className="w-4 h-4" />
+            Print / PDF
+          </Button>
 
-      {/* HERO */}
-      <div className="rounded-3xl bg-gradient-to-br from-indigo-600 to-indigo-800 text-white p-8 shadow-xl">
-        <h1 className="text-3xl font-bold">Entry Details</h1>
-        <p className="text-indigo-200 text-sm mt-1">Reflection from {date}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!prevId}
+            onClick={goPrev}
+            className="flex items-center gap-1"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Previous
+          </Button>
 
-        {/* SCORE */}
-        <div className="mt-6 inline-flex items-center gap-3 bg-white/10 backdrop-blur px-4 py-2 rounded-xl border border-white/20">
-          <Brain className="w-5 h-5" />
-          <span className="text-lg font-semibold">
-            Mindset score: {analysis.mindset_score ?? 0}
-          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!nextId}
+            onClick={goNext}
+            className="flex items-center gap-1"
+          >
+            Next
+            <ArrowRight className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
-      {/* YOUR REFLECTION */}
-      <Card className="rounded-2xl shadow-md">
-        <CardHeader>
-          <CardTitle>Your Reflection</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-slate-700 text-sm md:text-base whitespace-pre-line">
-            {entry.content}
-          </p>
-        </CardContent>
-      </Card>
+      {/* TAGS + META */}
+      <div className="flex flex-wrap gap-2">
+        {a.meta?.category && (
+          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-slate-900 text-white">
+            {a.meta.category}
+          </span>
+        )}
 
-      {/* EMOTIONS */}
-      <Card className="rounded-2xl shadow-md">
-        <CardHeader>
-          <CardTitle>Primary Emotions</CardTitle>
-        </CardHeader>
+        {typeof a.meta?.distress_level === "number" && (
+          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+            Distress: {a.meta.distress_level}/100
+          </span>
+        )}
 
-        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {emotions.length === 0 && (
-            <p className="text-sm text-muted-foreground">No emotions detected.</p>
-          )}
+        {tags.map((t) => (
+          <span
+            key={t}
+            className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200"
+          >
+            <Tag className="w-3 h-3" />
+            {t}
+          </span>
+        ))}
+      </div>
 
-          {emotions.map((e: any, i: number) => {
-            const emoji =
-              e.emotion === "sadness"
-                ? "😞"
-                : e.emotion === "anxiety"
-                ? "😟"
-                : e.emotion === "frustration"
-                ? "😠"
-                : e.emotion === "fear"
-                ? "😨"
-                : e.emotion === "anger"
-                ? "😡"
-                : "🙂";
+      {/* GRID LAYOUT */}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)] gap-8">
+        {/* LEFT COLUMN: TEXT + ACTIONS */}
+        <div className="space-y-6">
+          {/* Original text */}
+          <Card className="rounded-3xl border-slate-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Quote className="w-5 h-5 text-indigo-600" />
+                Your Reflection
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-line text-sm md:text-base text-slate-800 leading-relaxed">
+                {entry.content}
+              </p>
+            </CardContent>
+          </Card>
 
-            return (
-              <div key={i} className="border rounded-xl p-4 shadow-sm">
-                <p className="text-3xl">{emoji}</p>
-                <p className="font-medium capitalize">{e.emotion}</p>
-                <p className="text-xs text-slate-500">Intensity: {e.intensity}/10</p>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
+          {/* AI Insight + Summary */}
+          <Card className="rounded-3xl border-slate-200 bg-indigo-50/60">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Sparkles className="w-5 h-5 text-indigo-600" />
+                AI Insight Today
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm md:text-base text-indigo-900 leading-relaxed">
+                {a.ai_insight_today || "No insight available."}
+              </p>
 
-      {/* SUMMARY */}
-      <Card className="rounded-2xl shadow-md">
-        <CardHeader>
-          <CardTitle>Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-slate-700 text-sm md:text-base">
-            {analysis.summary || "No summary available."}
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* COGNITIVE PATTERNS */}
-      <Card className="rounded-2xl shadow-md">
-        <CardHeader>
-          <CardTitle>Cognitive Patterns</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {analysis.cognitive_patterns?.length ? (
-            <ul className="list-disc list-inside space-y-2 text-slate-700 text-sm md:text-base">
-              {analysis.cognitive_patterns.map((p: any, i: number) => (
-                <li key={i}>
-                  <strong>{p.name}</strong> ({p.score}/10) — {p.explanation}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-slate-500 text-sm">No patterns detected.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* SENTENCE SCAN */}
-      {analysis.sentence_scan && (
-        <Card className="rounded-2xl shadow-md">
-          <CardHeader>
-            <CardTitle>Sentence Scan</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {analysis.sentence_scan.map((s: any, i: number) => (
-              <div
-                key={i}
-                className="border rounded-xl p-4 bg-slate-50 space-y-1"
-              >
-                <p className="font-medium text-slate-800">“{s.sentence}”</p>
-                <p className="text-xs text-slate-500">
-                  Type: {s.type} | Emotion: {s.emotion} | Pattern: {s.pattern}
+              <div className="rounded-2xl bg-white/80 border border-indigo-100 p-4">
+                <p className="text-xs font-semibold text-indigo-600 uppercase mb-1">
+                  Summary
                 </p>
-                <p className="text-xs text-slate-500">{s.notes}</p>
+                <p className="text-sm text-slate-800">{a.summary || "—"}</p>
               </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
 
-      {/* ROOT CAUSE */}
-      <Card className="rounded-2xl shadow-md">
-        <CardHeader>
-          <CardTitle>Root Cause</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-slate-700 text-sm md:text-base">
-            {analysis.root_cause || "No root cause identified."}
-          </p>
-        </CardContent>
-      </Card>
+          {/* Actions */}
+          <Card className="rounded-3xl border-slate-200 bg-emerald-50/60">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Target className="w-5 h-5 text-emerald-600" />
+                Action Steps
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid sm:grid-cols-2 gap-4 text-sm">
+              <div className="rounded-2xl bg-white/80 border border-emerald-100 p-3">
+                <p className="text-[11px] font-semibold uppercase text-emerald-600">
+                  Today micro step
+                </p>
+                <p className="mt-1 text-slate-800">
+                  {a.actions?.today_micro_step || "—"}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/80 border border-emerald-100 p-3">
+                <p className="text-[11px] font-semibold uppercase text-emerald-600">
+                  Tomorrow focus
+                </p>
+                <p className="mt-1 text-slate-800">
+                  {a.actions?.tomorrow_focus || "—"}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/80 border border-emerald-100 p-3">
+                <p className="text-[11px] font-semibold uppercase text-emerald-600">
+                  Potential pitfall
+                </p>
+                <p className="mt-1 text-slate-800">
+                  {a.actions?.potential_pitfall || "—"}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/80 border border-emerald-100 p-3">
+                <p className="text-[11px] font-semibold uppercase text-emerald-600">
+                  Supportive mindset
+                </p>
+                <p className="mt-1 text-slate-800">
+                  {a.actions?.supportive_mindset || "—"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* REFRAMES */}
-      <Card className="rounded-2xl shadow-md">
-        <CardHeader>
-          <CardTitle>Reframes</CardTitle>
-        </CardHeader>
+          {/* Root cause + Micro thoughts */}
+          <Card className="rounded-3xl border-slate-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <ListTree className="w-5 h-5 text-slate-700" />
+                Root Cause & Micro Thoughts
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3">
+                <p className="text-[11px] font-semibold uppercase text-slate-500 mb-1">
+                  Root cause
+                </p>
+                <p className="text-slate-800">
+                  {a.root_cause || "No root cause identified."}
+                </p>
+              </div>
 
-        <CardContent className="space-y-4 text-slate-700 text-sm md:text-base">
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3">
+                  <p className="text-[11px] font-semibold uppercase text-slate-500 mb-1">
+                    Core thought
+                  </p>
+                  <p className="text-slate-800">
+                    {a.micro_thoughts?.core_thought || "—"}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3 space-y-1">
+                  <p className="text-[11px] font-semibold uppercase text-slate-500">
+                    Supporting thoughts
+                  </p>
+                  <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+                    {(a.micro_thoughts?.supporting_thoughts || []).map(
+                      (t: string, i: number) => (
+                        <li key={i}>{t}</li>
+                      )
+                    )}
+                  </ul>
+                </div>
+              </div>
 
-          <p><strong>Stoic:</strong> {analysis.reframes?.stoic}</p>
-          <p><strong>CBT:</strong> {analysis.reframes?.cognitive_behavioral_therapy}</p>
-          <p><strong>Logic:</strong> {analysis.reframes?.logic}</p>
-          <p><strong>Self-Compassion:</strong> {analysis.reframes?.self_compassion}</p>
-          <p><strong>Growth Mindset:</strong> {analysis.reframes?.growth_mindset_reframe}</p>
-          <p><strong>Meta Perspective:</strong> {analysis.reframes?.meta_perspective_reframe}</p>
-          <p><strong>Action Reframe:</strong> {analysis.reframes?.action_reframe}</p>
-          <p><strong>Values-Based:</strong> {analysis.reframes?.values_based_reframe}</p>
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3 space-y-1">
+                  <p className="text-[11px] font-semibold uppercase text-slate-500">
+                    Hidden assumptions
+                  </p>
+                  <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+                    {(a.micro_thoughts?.hidden_assumptions || []).map(
+                      (t: string, i: number) => (
+                        <li key={i}>{t}</li>
+                      )
+                    )}
+                  </ul>
+                </div>
+                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3 space-y-1">
+                  <p className="text-[11px] font-semibold uppercase text-slate-500">
+                    Emotional statements
+                  </p>
+                  <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+                    {(a.micro_thoughts?.emotional_statements || []).map(
+                      (t: string, i: number) => (
+                        <li key={i}>{t}</li>
+                      )
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-        </CardContent>
-      </Card>
+        {/* RIGHT COLUMN: EMOTIONS + STATS + PATTERNS + REFRAMES */}
+        <div className="space-y-6">
+          {/* Emotions */}
+          <Card className="rounded-3xl border-slate-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <HeartPulse className="w-5 h-5 text-rose-500" />
+                Emotions & Body
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              {/* Primary emotions */}
+              <div>
+                <p className="text-[11px] font-semibold uppercase text-slate-500 mb-2">
+                  Primary emotions
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {primaryEmotions.length === 0 && (
+                    <p className="text-xs text-slate-500">No data.</p>
+                  )}
+                  {primaryEmotions.map((em, i) => {
+                    const s = styleForEmotion(em.emotion);
+                    return (
+                      <div
+                        key={i}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-2xl ring-1 shadow-sm ${s.bg} ${s.text} ${s.ring}`}
+                      >
+                        <span className="text-xl">{s.emoji}</span>
+                        <div className="leading-tight">
+                          <p className="font-semibold capitalize text-xs">
+                            {em.emotion}
+                          </p>
+                          <p className="text-[11px] opacity-80">
+                            Intensity: {em.intensity}/100
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-      {/* ACTIONS */}
-      <Card className="rounded-2xl shadow-md bg-indigo-50 border border-indigo-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-indigo-800">
-            <ListChecks className="w-5 h-5" />
-            Action Steps
-          </CardTitle>
-        </CardHeader>
+              {/* Secondary */}
+              {secondaryEmotions.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase text-slate-500 mb-1">
+                    Secondary emotions
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {secondaryEmotions.map((em, i) => (
+                      <span
+                        key={i}
+                        className="text-xs px-2 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200 capitalize"
+                      >
+                        {em.emotion} ({em.intensity}/100)
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-        <CardContent className="space-y-6 text-sm md:text-base">
+              {/* Body sensations */}
+              {bodySensations.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase text-slate-500 mb-1">
+                    Body sensations
+                  </p>
+                  <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+                    {bodySensations.map((s: string, i: number) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          <div>
-            <p className="uppercase text-xs text-indigo-500 font-semibold">Micro step today</p>
-            <p className="mt-1 text-slate-800">{actions.today_micro_step}</p>
-          </div>
+          {/* Stats */}
+          <Card className="rounded-3xl border-slate-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Brain className="w-5 h-5 text-indigo-600" />
+                Mindset Stats
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3 text-xs">
+              <StatPill label="Mindset score" value={a.mindset_score} />
+              <StatPill label="Clarity" value={a.stats?.clarity_score} />
+              <StatPill label="Stress" value={a.stats?.stress_marker} />
+              <StatPill
+                label="Motivation"
+                value={a.stats?.motivation_score}
+              />
+              <StatPill
+                label="Resilience"
+                value={a.stats?.resilience_marker}
+              />
+              <StatPill
+                label="Emotional stability"
+                value={a.stats?.emotional_stability_score}
+              />
+            </CardContent>
+          </Card>
 
-          <div>
-            <p className="uppercase text-xs text-indigo-500 font-semibold">Tomorrow's focus</p>
-            <p className="mt-1 text-slate-800">{actions.tomorrow_focus}</p>
-          </div>
+          {/* Cognitive patterns */}
+          <Card className="rounded-3xl border-slate-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Brain className="w-5 h-5 text-slate-700" />
+                Cognitive Patterns
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-xs">
+              {(a.cognitive_patterns || []).map((p: any, i: number) => (
+                <div
+                  key={i}
+                  className="rounded-2xl bg-slate-50 border border-slate-200 p-3"
+                >
+                  <p className="font-semibold text-slate-800 text-sm">
+                    {p.name}{" "}
+                    <span className="text-[11px] text-slate-500">
+                      ({p.score}/100)
+                    </span>
+                  </p>
+                  <p className="mt-1 text-slate-700">{p.explanation}</p>
+                </div>
+              ))}
+              {(!a.cognitive_patterns || a.cognitive_patterns.length === 0) && (
+                <p className="text-xs text-slate-500">No patterns detected.</p>
+              )}
+            </CardContent>
+          </Card>
 
-          <div>
-            <p className="uppercase text-xs text-indigo-500 font-semibold">Potential pitfall</p>
-            <p className="mt-1 text-slate-800">{actions.potential_pitfall}</p>
-          </div>
+          {/* Reframes */}
+          <Card className="rounded-3xl border-slate-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Sparkles className="w-5 h-5 text-amber-500" />
+                Reframes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-xs">
+              {a.reframes && (
+                <>
+                  <ReframeBlock label="Stoic" text={a.reframes.stoic} />
+                  <ReframeBlock
+                    label="CBT"
+                    text={a.reframes.cognitive_behavioral_therapy}
+                  />
+                  <ReframeBlock label="Logic" text={a.reframes.logic} />
+                  <ReframeBlock
+                    label="Self-compassion"
+                    text={a.reframes.self_compassion}
+                  />
+                  <ReframeBlock
+                    label="Growth mindset"
+                    text={a.reframes.growth_mindset_reframe}
+                  />
+                  <ReframeBlock
+                    label="Meta perspective"
+                    text={a.reframes.meta_perspective_reframe}
+                  />
+                  <ReframeBlock
+                    label="Action reframe"
+                    text={a.reframes.action_reframe}
+                  />
+                  <ReframeBlock
+                    label="Values-based"
+                    text={a.reframes.values_based_reframe}
+                  />
+                </>
+              )}
+              {!a.reframes && (
+                <p className="text-xs text-slate-500">No reframes available.</p>
+              )}
+            </CardContent>
+          </Card>
 
-          <div>
-            <p className="uppercase text-xs text-indigo-500 font-semibold">Supportive mindset</p>
-            <p className="mt-1 text-slate-800">{actions.supportive_mindset}</p>
-          </div>
+          {/* Sentence scan */}
+          <Card className="rounded-3xl border-slate-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <ListTree className="w-5 h-5 text-slate-700" />
+                Sentence Scan
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-xs">
+              {(a.sentence_scan || []).map((sItem: any, i: number) => (
+                <div
+                  key={i}
+                  className="rounded-2xl bg-slate-50 border border-slate-200 p-3"
+                >
+                  <p className="text-slate-800 text-sm">
+                    “{sItem.sentence || ""}”
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500 flex flex-wrap gap-2">
+                    <span className="px-2 py-0.5 rounded-full bg-slate-900 text-white">
+                      {sItem.type}
+                    </span>
+                    {sItem.emotion && (
+                      <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        emotion: {sItem.emotion}
+                      </span>
+                    )}
+                    {sItem.pattern && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        pattern: {sItem.pattern}
+                      </span>
+                    )}
+                  </p>
+                  {sItem.notes && (
+                    <p className="mt-1 text-slate-600">{sItem.notes}</p>
+                  )}
+                </div>
+              ))}
+              {(!a.sentence_scan || a.sentence_scan.length === 0) && (
+                <p className="text-xs text-slate-500">
+                  No sentence scan available.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-        </CardContent>
-      </Card>
+/* -------------------- small sub components -------------------- */
 
-      {/* AI INSIGHT */}
-      <Card className="rounded-2xl shadow-md bg-emerald-50 border border-emerald-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-emerald-700">
-            <Sparkles className="w-5 h-5" />
-            AI Insight Today
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-slate-800 text-sm md:text-base">
-            {analysis.ai_insight_today}
-          </p>
-        </CardContent>
-      </Card>
+function StatPill({ label, value }: { label: string; value: number }) {
+  if (value == null || Number.isNaN(value)) {
+    return (
+      <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3 flex flex-col">
+        <span className="text-[11px] text-slate-500 uppercase mb-1">
+          {label}
+        </span>
+        <span className="text-sm text-slate-400">—</span>
+      </div>
+    );
+  }
 
-      {/* TAGS */}
-      {analysis.tags?.length > 0 && (
-        <Card className="rounded-2xl shadow-md">
-          <CardHeader>
-            <CardTitle>Tags</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {analysis.tags.map((t: string, i: number) => (
-              <span
-                key={i}
-                className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs"
-              >
-                {t}
-              </span>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+  return (
+    <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3 flex flex-col">
+      <span className="text-[11px] text-slate-500 uppercase mb-1">
+        {label}
+      </span>
+      <span className={`text-sm font-semibold ${scoreColor(value)}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
 
-      {/* META */}
-      <Card className="rounded-2xl shadow-md">
-        <CardHeader>
-          <CardTitle>Meta</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-600">
-            <strong>Confidence:</strong> {analysis.meta?.analysis_confidence}
-          </p>
-          <p className="text-sm text-slate-600">
-            <strong>Distress level:</strong> {analysis.meta?.distress_level}
-          </p>
-        </CardContent>
-      </Card>
+function ReframeBlock({ label, text }: { label: string; text?: string }) {
+  if (!text) return null;
+  return (
+    <div className="rounded-2xl bg-white border border-amber-100 p-3">
+      <p className="text-[11px] font-semibold uppercase text-amber-600 mb-1">
+        {label}
+      </p>
+      <p className="text-slate-800">{text}</p>
     </div>
   );
 }
