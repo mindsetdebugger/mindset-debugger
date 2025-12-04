@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Sparkles, Heart, Feather, Layers } from "lucide-react";
+import { SaveToNotesButton } from "@/components/SaveToNotesButton";
+
 
 // =====================================
 // Emotion UI mapping
@@ -34,6 +36,7 @@ function styleForEmotion(name: string) {
     }
   );
 }
+
 
 // =====================================
 // PAGE COMPONENT
@@ -75,8 +78,8 @@ export default function InsightsPage() {
 
   const insights = summary.insights_page || {};
   const aggregates = summary.aggregates || {};
-
   const top3 = latestEntry?.analysis?.emotions?.primary?.slice(0, 3) || [];
+
 
   return (
     <div className="px-4 md:px-10 py-12 space-y-14">
@@ -91,6 +94,7 @@ export default function InsightsPage() {
         </p>
       </header>
 
+
       {/* ---------------------------------------------------------- */}
       {/* GRID LAYOUT */}
       {/* ---------------------------------------------------------- */}
@@ -98,11 +102,18 @@ export default function InsightsPage() {
 
         {/* ---------------- TOP EMOTIONS ---------------- */}
         <Card className="rounded-3xl shadow-xl border border-slate-200 col-span-1">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-lg flex items-center gap-2">
               💗 Top Emotions (Last Entry)
             </CardTitle>
+
+            <SaveToNotesButton
+              title="Top Emotions"
+              content={top3.map((e) => `${e.emotion} (${e.intensity})`)}
+              tags={["emotions", "top3"]}
+            />
           </CardHeader>
+
           <CardContent className="space-y-4">
             {top3.map((e: any, idx: number) => {
               const s = styleForEmotion(e.emotion);
@@ -122,13 +133,21 @@ export default function InsightsPage() {
           </CardContent>
         </Card>
 
+
         {/* ---------------- DOMINANT COGNITIVE PATTERN ---------------- */}
         <Card className="rounded-3xl shadow-xl border border-indigo-200 bg-indigo-50 col-span-1">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-indigo-900 flex items-center gap-2 text-lg">
               🧠 Dominant Cognitive Pattern
             </CardTitle>
+
+            <SaveToNotesButton
+              title="Dominant Cognitive Pattern"
+              content={aggregates?.top_cognitive_patterns?.[0] || "N/A"}
+              tags={["pattern", "cognition"]}
+            />
           </CardHeader>
+
           <CardContent>
             <div className="p-4 bg-white rounded-2xl border border-indigo-200 shadow-sm text-indigo-900">
               {aggregates?.top_cognitive_patterns?.[0] || "N/A"}
@@ -136,11 +155,19 @@ export default function InsightsPage() {
           </CardContent>
         </Card>
 
+
         {/* ---------------- LIMITING BELIEFS ---------------- */}
         <Card className="rounded-3xl shadow-xl border border-rose-200 bg-rose-50 col-span-1">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-lg text-rose-700">⚠️ Limiting Beliefs</CardTitle>
+
+            <SaveToNotesButton
+              title="Limiting Beliefs"
+              content={insights.recurring_limiting_beliefs || []}
+              tags={["beliefs", "limitations"]}
+            />
           </CardHeader>
+
           <CardContent className="space-y-3">
             {(insights.recurring_limiting_beliefs || []).map((b: string, idx: number) => (
               <div
@@ -153,13 +180,21 @@ export default function InsightsPage() {
           </CardContent>
         </Card>
 
+
         {/* ---------------- CORE NEEDS ---------------- */}
         <Card className="rounded-3xl shadow-xl border border-emerald-200 bg-emerald-50 col-span-1">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-lg text-emerald-700 flex items-center gap-2">
               <Heart className="w-5" /> Core Needs
             </CardTitle>
+
+            <SaveToNotesButton
+              title="Core Needs"
+              content={insights.core_needs || []}
+              tags={["needs", "core"]}
+            />
           </CardHeader>
+
           <CardContent className="space-y-3">
             {(insights.core_needs || []).map((n: string, idx: number) => (
               <div
@@ -172,13 +207,21 @@ export default function InsightsPage() {
           </CardContent>
         </Card>
 
+
         {/* ---------------- DEEP FEARS ---------------- */}
         <Card className="rounded-3xl shadow-xl border border-indigo-200 bg-indigo-50 col-span-1">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-lg text-indigo-800 flex items-center gap-2">
               <Feather className="w-5" /> Deep Fears
             </CardTitle>
+
+            <SaveToNotesButton
+              title="Deep Fears"
+              content={insights.deep_fears || []}
+              tags={["fears", "deep"]}
+            />
           </CardHeader>
+
           <CardContent className="space-y-3">
             {(insights.deep_fears || []).map((f: string, idx: number) => (
               <div
@@ -191,11 +234,21 @@ export default function InsightsPage() {
           </CardContent>
         </Card>
 
+
         {/* ---------------- STRENGTHS OVER TIME ---------------- */}
         <Card className="rounded-3xl shadow-xl border border-amber-200 bg-amber-50 col-span-1">
-          <CardHeader>
-            <CardTitle className="text-lg text-amber-700">✨ Strengths Over Time</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-lg text-amber-700">
+              ✨ Strengths Over Time
+            </CardTitle>
+
+            <SaveToNotesButton
+              title="Strengths Over Time"
+              content={insights.strengths_visible_over_time || []}
+              tags={["strengths"]}
+            />
           </CardHeader>
+
           <CardContent className="space-y-3">
             {(insights.strengths_visible_over_time || []).map((s: string, idx: number) => (
               <div
@@ -208,13 +261,21 @@ export default function InsightsPage() {
           </CardContent>
         </Card>
 
+
         {/* ---------------- GROWTH EDGES ---------------- */}
         <Card className="rounded-3xl shadow-xl border border-purple-200 bg-purple-50 col-span-1">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-lg text-purple-700 flex items-center gap-2">
               <Layers className="w-5" /> Growth Edges
             </CardTitle>
+
+            <SaveToNotesButton
+              title="Growth Edges"
+              content={insights.growth_edges || []}
+              tags={["growth", "edges"]}
+            />
           </CardHeader>
+
           <CardContent className="space-y-3">
             {(insights.growth_edges || []).map((g: string, idx: number) => (
               <div
@@ -227,21 +288,29 @@ export default function InsightsPage() {
           </CardContent>
         </Card>
 
-        {/* ---------------- PERSONAL STYLE (IMPROVED) ---------------- */}
+
+        {/* ---------------- PERSONAL STYLE ---------------- */}
         <Card className="rounded-3xl shadow-xl border border-slate-200 bg-white col-span-1 md:col-span-3">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-lg flex items-center gap-2">
               <Sparkles className="text-indigo-600 w-5" />
               Your Personal Style
             </CardTitle>
+
+            <SaveToNotesButton
+              title="Personal Style"
+              content={[
+                `Thinking: ${insights.thinking_style || "N/A"}`,
+                `Emotional: ${insights.emotional_style || "N/A"}`,
+                `Behavior: ${insights.behavior_style || "N/A"}`,
+              ]}
+              tags={["style", "personal"]}
+            />
           </CardHeader>
 
           <CardContent className="grid md:grid-cols-2 gap-6">
-
             {/* LEFT SIDE */}
             <div className="space-y-6">
-
-              {/* Thinking */}
               <div className="p-5 rounded-2xl border bg-white shadow-sm">
                 <p className="text-slate-800 font-semibold mb-1">Thinking Style</p>
                 <p className="text-slate-600 text-sm leading-relaxed">
@@ -249,7 +318,6 @@ export default function InsightsPage() {
                 </p>
               </div>
 
-              {/* Emotional */}
               <div className="p-5 rounded-2xl border bg-white shadow-sm">
                 <p className="text-slate-800 font-semibold mb-1">Emotional Style</p>
                 <p className="text-slate-600 text-sm leading-relaxed">
@@ -267,6 +335,7 @@ export default function InsightsPage() {
             </div>
           </CardContent>
         </Card>
+
       </div>
     </div>
   );

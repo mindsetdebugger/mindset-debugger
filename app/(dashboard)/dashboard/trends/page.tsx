@@ -1,4 +1,3 @@
-// app/dashboard/trends/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,6 +8,7 @@ import {
   CardTitle,
   CardContent,
 } from "@/components/ui/card";
+
 
 import {
   LineChart,
@@ -46,6 +46,7 @@ import {
   deriveForecast,
   type EntryRow,
 } from "@/lib/trends-helpers";
+import { SaveToNotesButton } from "@/components/SaveToNotesButton";
 
 const COLORS = [
   "#4f46e5",
@@ -57,8 +58,6 @@ const COLORS = [
   "#facc15",
 ];
 
-// ----------------------------- PAGE -----------------------------
-
 export default function TrendsPage() {
   const supabase = supabaseBrowser();
 
@@ -68,78 +67,53 @@ export default function TrendsPage() {
   const [error, setError] = useState<string | null>(null);
 
   // derived
-  const [mindsetSeries, setMindsetSeries] = useState<
-    { dateLabel: string; score: number }[]
-  >([]);
-  const [emotionSeries, setEmotionSeries] = useState<
-    { dateLabel: string; intensity: number }[]
-  >([]);
-  const [emotionDistribution, setEmotionDistribution] = useState<
-    { emotion: string; value: number }[]
-  >([]);
-  const [patternFrequency, setPatternFrequency] = useState<
-    { pattern: string; count: number }[]
-  >([]);
-  const [weeklySummaries, setWeeklySummaries] = useState<any[]>([]);
+  const [mindsetSeries, setMindsetSeries] = useState([]);
+  const [emotionSeries, setEmotionSeries] = useState([]);
+  const [emotionDistribution, setEmotionDistribution] = useState([]);
+  const [patternFrequency, setPatternFrequency] = useState([]);
+  const [weeklySummaries, setWeeklySummaries] = useState([]);
 
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        setError(null);
 
         const { data: session } = await supabase.auth.getUser();
         const user = session?.user;
-        if (!user) {
-          setError("No user session.");
-          setLoading(false);
-          return;
-        }
+        if (!user) return;
 
-        // 1) history_summaries (aggregati za trends / insights)
-        const { data: summaryData, error: sErr } = await supabase
+        const { data: summaryData } = await supabase
           .from("history_summaries")
           .select("*")
           .eq("user_id", user.id)
           .maybeSingle();
 
-        if (sErr) console.warn("history_summaries error:", sErr);
         setSummary(summaryData || null);
 
-        // 2) entries zadnjih 30 dana
         const since = new Date();
         since.setDate(since.getDate() - 30);
 
-        const { data: entryData, error: eErr } = await supabase
+        const { data: entryData } = await supabase
           .from("entries")
           .select("created_at, analysis")
           .eq("user_id", user.id)
           .gte("created_at", since.toISOString())
           .order("created_at", { ascending: true });
 
-        if (eErr) {
-          console.error(eErr);
-          setError(eErr.message);
-          setLoading(false);
-          return;
-        }
-
-        const cleanEntries: EntryRow[] = (entryData || []).map((e: any) => ({
+        const cleanEntries: any = (entryData || []).map((e: any) => ({
           created_at: e.created_at,
           analysis: e.analysis,
         }));
 
         setEntries(cleanEntries);
 
-        // derived series
         setMindsetSeries(buildMindsetSeries(cleanEntries));
         setEmotionSeries(buildEmotionIntensitySeries(cleanEntries));
         setEmotionDistribution(buildEmotionDistribution(cleanEntries));
         setPatternFrequency(buildPatternFrequency(cleanEntries));
         setWeeklySummaries(buildWeeklySummaries(cleanEntries));
-      } catch (err: any) {
-        console.error(err);
-        setError(err.message || "Unknown error");
+      } catch (err) {
+        console.log(err);
       } finally {
         setLoading(false);
       }
@@ -147,340 +121,331 @@ export default function TrendsPage() {
   }, []);
 
   const trends = summary?.trends_page || null;
-
   const forecastText = deriveForecast(trends);
 
-  // -------------------------------------------------------------------
-  // RENDER
-  // -------------------------------------------------------------------
-  if (loading) {
-    return (
-      <div className="px-4 md:px-10 py-10 text-slate-500">
-        Učitavanje trendova…
-      </div>
-    );
-  }
+  if (loading)
+    return <div className="px-10 py-10 text-slate-500">Učitavanje trendova…</div>;
 
-  if (!entries.length && !summary) {
-    return (
-      <div className="px-4 md:px-10 py-16 text-center text-slate-500">
-        Za prikaz trendova trebaš barem nekoliko unosa.  
-        Započni s današnjim zapisom na Home stranici. 🙂
-      </div>
-    );
-  }
-
+  // ============================================================
+  // PAGE RENDER
+  // ============================================================
   return (
     <div className="px-4 md:px-10 py-10 space-y-10">
 
-      {/* --------------------- HEADER --------------------- */}
+      {/* -------------------------------------------------------- */}
+      {/* HEADER with Save */}
+      {/* -------------------------------------------------------- */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-sky-500 text-white px-6 py-8 md:px-10 md:py-10 shadow-xl">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="max-w-xl">
-            <h1 className="text-3xl md:text-4xl font-bold flex items-center gap-3">
+
+        <div className="flex justify-between items-start">
+          <div className="max-w-xl space-y-2">
+            <h1 className="text-4xl font-bold flex items-center gap-3">
               <CalendarRange className="h-7 w-7" />
               Long-Term Trends
             </h1>
-            <p className="mt-3 text-sm md:text-base text-indigo-100">
-              Pogled unatrag na zadnjih 30 dana — kako su se tvoj mindset,
-              emocije i obrasci stvarno mijenjali kroz vrijeme.
+            <p className="text-indigo-100">
+              Pogled unatrag na zadnjih 30 dana.
             </p>
           </div>
 
-          <div className="bg-white/10 border border-white/20 rounded-2xl px-5 py-4 shadow-lg backdrop-blur-md max-w-sm">
-            <p className="text-xs uppercase tracking-wide text-indigo-100 mb-1">
-              Sažetak tvog razdoblja
-            </p>
-            <p className="text-sm leading-snug text-indigo-50">
-              {summary?.summary_short ||
-                "Nema još agregiranog sažetka – svaki novi zapis pomaže da ovdje dobiješ jasnu sliku svojih obrazaca."}
-            </p>
-          </div>
+          <SaveToNotesButton
+            title="30-day Trends Summary"
+            content={summary?.summary_short || ""}
+            tags={["trends", "summary"]}
+          />
         </div>
 
-        <div className="pointer-events-none absolute -right-32 -bottom-32 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
+        <div className="mt-5 bg-white/10 border border-white/20 rounded-2xl px-5 py-4 shadow-lg backdrop-blur-md max-w-sm">
+          <p className="text-xs uppercase tracking-wide text-indigo-100 mb-1">Sažetak</p>
+          <p className="text-sm leading-snug text-indigo-50">
+            {summary?.summary_short || "Nema još agregiranog sažetka."}
+          </p>
+        </div>
       </section>
 
-      {/* --------------------- TOP STATS STRIP --------------------- */}
+      {/* -------------------------------------------------------- */}
+      {/* TOP CARDS — each with SAVE */}
+      {/* -------------------------------------------------------- */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        {/* AVG MINDSET SCORE */}
         <Card className="rounded-2xl shadow-md border-slate-200">
-          <CardContent className="flex items-center justify-between p-5">
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle className="text-sm">Prosječni Mindset Score</CardTitle>
+            <SaveToNotesButton
+              title="Average Mindset Score"
+              content={`Mindset: ${trends?.avg_mindset_score || "N/A"}`}
+              tags={["mindset", "score"]}
+            />
+          </CardHeader>
+
+          <CardContent className="flex justify-between p-5">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Prosječni Mindset Score
-              </p>
               <p className="text-3xl font-bold text-indigo-600 mt-1">
                 {trends?.avg_mindset_score ?? "—"}
               </p>
-              <p className="text-xs text-slate-500 mt-1">
-                kroz zadnjih 30 dana
-              </p>
+              <p className="text-xs text-slate-500">kroz zadnjih 30 dana</p>
             </div>
-            <Activity className="h-9 w-9 text-indigo-500" />
+            <Activity className="h-8 w-8 text-indigo-500" />
           </CardContent>
         </Card>
 
+        {/* EMOTIONAL STABILITY */}
         <Card className="rounded-2xl shadow-md border-slate-200">
-          <CardContent className="flex items-center justify-between p-5">
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle className="text-sm">Emocionalna stabilnost</CardTitle>
+            <SaveToNotesButton
+              title="Emotional Stability"
+              content={`Stability: ${trends?.emotional_stability_score || "N/A"}`}
+              tags={["emotion", "stability"]}
+            />
+          </CardHeader>
+
+          <CardContent className="flex justify-between p-5">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Emocionalna stabilnost
-              </p>
               <p className="text-3xl font-bold text-emerald-600 mt-1">
                 {trends?.emotional_stability_score ?? "—"}
               </p>
-              <p className="text-xs text-slate-500 mt-1">
-                viši broj = manje oscilacija
-              </p>
+              <p className="text-xs text-slate-500">manje oscilacija = bolje</p>
             </div>
-            <Brain className="h-9 w-9 text-emerald-500" />
+            <Brain className="h-8 w-8 text-emerald-500" />
           </CardContent>
         </Card>
 
+        {/* MOMENTUM */}
         <Card className="rounded-2xl shadow-md border-slate-200">
-          <CardContent className="flex items-center justify-between p-5">
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle className="text-sm">Momentum</CardTitle>
+
+            <SaveToNotesButton
+              title="Momentum Summary"
+              content={trends?.overall_progress || "mixed"}
+              tags={["momentum", "progress"]}
+            />
+          </CardHeader>
+
+          <CardContent className="flex justify-between p-5">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Momentum
-              </p>
-              <p className="text-sm mt-1 flex items-center gap-2 text-slate-700">
+              <p className="text-sm flex items-center gap-2">
                 {trends?.overall_progress === "improving" && (
-                  <>
-                    <TrendingUp className="h-4 w-4 text-emerald-500" />
-                    <span>Opći trend ide prema naprijed.</span>
-                  </>
+                  <><TrendingUp className="text-emerald-500" /> Napredak</>
                 )}
                 {trends?.overall_progress === "declining" && (
-                  <>
-                    <TrendingDown className="h-4 w-4 text-rose-500" />
-                    <span>Ovo razdoblje ti je izazovnije nego prije.</span>
-                  </>
+                  <><TrendingDown className="text-rose-500" /> Teže razdoblje</>
                 )}
-                {(!trends || !trends?.overall_progress || trends?.overall_progress === "mixed") && (
-                  <>
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
-                    <span>Slika je miješana — ima i rasta i padova.</span>
-                  </>
+                {!trends?.overall_progress && (
+                  <><AlertTriangle className="text-amber-500" /> Mješovito</>
                 )}
               </p>
+
               <p className="text-xs text-slate-500 mt-1">
-                bazirano na stresu, otpornosti i mindsetu
+                bazirano na stresu i mindsetu
               </p>
             </div>
-            <Sparkles className="h-9 w-9 text-purple-500" />
+            <Sparkles className="h-8 w-8 text-purple-500" />
           </CardContent>
         </Card>
       </section>
 
-      {/* --------------------- LINE & AREA CHARTS --------------------- */}
+      {/* -------------------------------------------------------- */}
+      {/* CHARTS — each gets a SAVE summarizing data */}
+      {/* -------------------------------------------------------- */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Mindset Score Trend */}
+
+        {/* MINDSET TREND */}
         <Card className="rounded-3xl shadow-lg border-slate-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-indigo-600" />
-              Mindset Score • zadnjih 30 dana
+              Mindset Score • 30 dana
             </CardTitle>
+
+            <SaveToNotesButton
+              title="Mindset Trend Data"
+              content={mindsetSeries.map((d: any) => `${d.dateLabel}: ${d.score}`)}
+              tags={["mindset", "trend"]}
+            />
           </CardHeader>
+
           <CardContent className="h-64">
-            {mindsetSeries.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                Nema dovoljno podataka za prikaz Mindset trenda.
-              </p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={mindsetSeries}>
-                  <XAxis dataKey="dateLabel" fontSize={11} />
-                  <YAxis domain={[0, 100]} fontSize={11} />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="score"
-                    stroke="#4f46e5"
-                    strokeWidth={2.4}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={mindsetSeries}>
+                <XAxis dataKey="dateLabel" fontSize={11} />
+                <YAxis domain={[0, 100]} fontSize={11} />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#4f46e5"
+                  strokeWidth={2.4}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Emotional Intensity Trend */}
+        {/* EMOTION INTENSITY */}
         <Card className="rounded-3xl shadow-lg border-slate-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
               <Brain className="h-5 w-5 text-rose-500" />
-              Prosječna emocionalna intenzivnost
+              Emocionalna intenzivnost
             </CardTitle>
+
+            <SaveToNotesButton
+              title="Emotion Intensity Trend"
+              content={emotionSeries.map((d: any) => `${d.dateLabel}: ${d.intensity}`)}
+              tags={["emotion", "intensity"]}
+            />
           </CardHeader>
+
           <CardContent className="h-64">
-            {emotionSeries.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                Još nemamo mjerljive emocije za ovo razdoblje.
-              </p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={emotionSeries}>
-                  <XAxis dataKey="dateLabel" fontSize={11} />
-                  <YAxis domain={[0, 100]} fontSize={11} />
-                  <Tooltip />
-                  <defs>
-                    <linearGradient id="emotionArea" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#ec4899" stopOpacity={0.7} />
-                      <stop offset="100%" stopColor="#ec4899" stopOpacity={0.1} />
-                    </linearGradient>
-                  </defs>
-                  <Area
-                    type="monotone"
-                    dataKey="intensity"
-                    stroke="#ec4899"
-                    fill="url(#emotionArea)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={emotionSeries}>
+                <XAxis dataKey="dateLabel" fontSize={11} />
+                <YAxis domain={[0, 100]} fontSize={11} />
+                <Tooltip />
+                <defs>
+                  <linearGradient id="emotionArea" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#ec4899" stopOpacity={0.7} />
+                    <stop offset="100%" stopColor="#ec4899" stopOpacity={0.1} />
+                  </linearGradient>
+                </defs>
+                <Area
+                  type="monotone"
+                  dataKey="intensity"
+                  stroke="#ec4899"
+                  fill="url(#emotionArea)"
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </section>
 
-      {/* --------------------- EMOTION DISTRIBUTION + PATTERNS -------- */}
+      {/* -------------------------------------------------------- */}
+      {/* EMOTION DISTRIBUTION + PATTERN FREQUENCY */}
+      {/* -------------------------------------------------------- */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Emotion Distribution */}
+        
+        {/* PIE */}
         <Card className="rounded-3xl shadow-lg border-slate-200">
-          <CardHeader>
-            <CardTitle className="text-lg">
-              Emocije kroz zadnje zapise
-            </CardTitle>
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle>Distribucija emocija</CardTitle>
+
+            <SaveToNotesButton
+              title="Emotion Distribution"
+              content={emotionDistribution.map((e: any) => `${e.emotion}: ${e.value}%`)}
+              tags={["emotion", "distribution"]}
+            />
           </CardHeader>
+
           <CardContent className="h-64 flex items-center justify-center">
-            {emotionDistribution.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                Nema dovoljno označenih emocija za distribuciju.
-              </p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={emotionDistribution}
-                    dataKey="value"
-                    nameKey="emotion"
-                    outerRadius={90}
-                    label={(d: any) => `${d.emotion} (${d.value}%)`}
-                  >
-                    {emotionDistribution.map((_, idx) => (
-                      <Cell
-                        key={idx}
-                        fill={COLORS[idx % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Legend />
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={emotionDistribution}
+                  dataKey="value"
+                  nameKey="emotion"
+                  outerRadius={90}
+                  label
+                >
+                  {emotionDistribution.map((_, idx) => (
+                    <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Legend />
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Pattern Frequency */}
+        {/* PATTERN FREQUENCY */}
         <Card className="rounded-3xl shadow-lg border-slate-200">
-          <CardHeader>
-            <CardTitle className="text-lg">
-              Učestalost kognitivnih obrazaca
-            </CardTitle>
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle>Učestalost obrazaca</CardTitle>
+
+            <SaveToNotesButton
+              title="Pattern Frequency"
+              content={patternFrequency.map((p: any) => `${p.pattern}: ${p.count}`)}
+              tags={["patterns"]}
+            />
           </CardHeader>
+
           <CardContent className="h-64">
-            {patternFrequency.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                Još nemamo prepoznate kognitivne obrasce.
-              </p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={patternFrequency}>
-                  <XAxis
-                    dataKey="pattern"
-                    fontSize={11}
-                    tickFormatter={(v) =>
-                      (v as string).length > 10
-                        ? (v as string).slice(0, 10) + "…"
-                        : v
-                    }
-                  />
-                  <YAxis allowDecimals={false} fontSize={11} />
-                  <Tooltip />
-                  <Bar dataKey="count" radius={[6, 6, 0, 0]} fill="#6366f1" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={patternFrequency}>
+                <XAxis dataKey="pattern" fontSize={11} />
+                <YAxis allowDecimals={false} fontSize={11} />
+                <Tooltip />
+                <Bar dataKey="count" fill="#6366f1" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </section>
 
-      {/* --------------------- WEEKLY SUMMARIES ------------------------ */}
+      {/* -------------------------------------------------------- */}
+      {/* WEEKLY SUMMARIES — each card gets Save */}
+      {/* -------------------------------------------------------- */}
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">
-            Tjedni uzorci (sažetak)
-          </h2>
-          <p className="text-xs text-slate-500">
-            Najnovija 3 tjedna tvojih obrazaca.
-          </p>
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Tjedni uzorci</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {weeklySummaries.slice(0, 3).map((w) => (
-            <Card
-              key={w.key}
-              className="rounded-2xl border-slate-200 shadow-md"
-            >
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold text-slate-800">
-                  {w.label}
-                </CardTitle>
+          {weeklySummaries.slice(0, 3).map((w: any) => (
+            <Card key={w.key} className="rounded-2xl border-slate-200 shadow-md">
+
+              <CardHeader className="flex justify-between items-center pb-2">
+                <CardTitle className="text-sm">{w.label}</CardTitle>
+
+                <SaveToNotesButton
+                  title={`Weekly Summary: ${w.label}`}
+                  content={[
+                    `Avg Mindset: ${w.avgMindset}`,
+                    `Emotion: ${w.dominantEmotion}`,
+                    `Pattern: ${w.dominantPattern}`,
+                    `Entries: ${w.entriesCount}`
+                  ]}
+                  tags={["weekly", "summary"]}
+                />
               </CardHeader>
-              <CardContent className="space-y-2 text-xs text-slate-600">
-                <p>
-                  <span className="font-semibold">Mindset prosjek: </span>
-                  {w.avgMindset ?? "—"}
-                </p>
-                <p>
-                  <span className="font-semibold">Dominantna emocija: </span>
-                  {w.dominantEmotion ? w.dominantEmotion : "—"}
-                </p>
-                <p>
-                  <span className="font-semibold">Glavni obrazac: </span>
-                  {w.dominantPattern ? w.dominantPattern : "—"}
-                </p>
-                <p>
-                  <span className="font-semibold">Broj zapisa: </span>
-                  {w.entriesCount}
-                </p>
+
+              <CardContent className="space-y-1 text-xs text-slate-600">
+                <p><strong>Mindset:</strong> {w.avgMindset}</p>
+                <p><strong>Emocija:</strong> {w.dominantEmotion}</p>
+                <p><strong>Obrazac:</strong> {w.dominantPattern}</p>
+                <p><strong>Zapisi:</strong> {w.entriesCount}</p>
               </CardContent>
             </Card>
           ))}
-
-          {weeklySummaries.length === 0 && (
-            <p className="text-sm text-slate-500">
-              Još nema dovoljno zapisa za tjedne sažetke.
-            </p>
-          )}
         </div>
       </section>
 
-      {/* --------------------- AI FORECAST ----------------------------- */}
+      {/* -------------------------------------------------------- */}
+      {/* FORECAST — Save button */}
+      {/* -------------------------------------------------------- */}
       <section>
         <Card className="rounded-3xl shadow-lg border-slate-200 bg-gradient-to-r from-slate-50 to-emerald-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Sparkles className="h-5 w-5 text-emerald-600" />
-              AI Forecast — kamo ovo sve ide?
+
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle className="flex gap-2 items-center">
+              <Sparkles className="text-emerald-600" />
+              AI Forecast
             </CardTitle>
+
+            <SaveToNotesButton
+              title="AI Forecast"
+              content={forecastText}
+              tags={["forecast", "ai"]}
+            />
           </CardHeader>
+
           <CardContent>
-            <p className="text-sm text-slate-700 leading-relaxed">
+            <p className="text-sm text-slate-700">
               {forecastText}
             </p>
           </CardContent>
