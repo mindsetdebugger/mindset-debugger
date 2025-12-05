@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 import {
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { SaveToNotesButton } from "@/components/SaveToNotesButton";
+import { useAppStore } from "@/lib/store/useAppStore";
 
 
 // =====================================
@@ -48,47 +48,34 @@ function styleForEmotion(name: string) {
 // PAGE COMPONENT
 // =====================================
 export default function InsightsPage() {
-  const supabase = supabaseBrowser();
+  const {
+    historySummary,
+    latestEntry,
+    loadHistorySummary,
+    loadLatestEntry,
+    loading,
+  } = useAppStore();
 
-  const [summary, setSummary] = useState<any>(null);
-  const [latestEntry, setLatestEntry] = useState<any>(null);
-
-  // Load data
+  // Load data on mount
   useEffect(() => {
-    (async () => {
-      const { data: session } = await supabase.auth.getUser();
-      const user = session?.user;
-      if (!user) return;
+    loadHistorySummary();
+    loadLatestEntry();
+  }, [loadHistorySummary, loadLatestEntry]);
 
-      const { data: summaryData } = await supabase
-        .from("history_summaries")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      setSummary(summaryData);
-
-      const { data: entryData } = await supabase
-        .from("entries")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      if (entryData?.length) setLatestEntry(entryData[0]);
-    })();
-  }, []);
-
-  if (!summary)
+  // Show loader until we have data
+  if (loading || !historySummary) {
     return (
       <div className="py-20 text-center text-slate-500">
         Loading insights…
       </div>
     );
+  }
 
+  const summary = historySummary;
   const insights = summary.insights_page || {};
   const aggregates = summary.aggregates || {};
-  const top3 = latestEntry?.analysis?.emotions?.primary?.slice(0, 3) || [];
+  const top3 =
+    latestEntry?.analysis?.emotions?.primary?.slice(0, 3) || [];
 
 
   return (
@@ -100,8 +87,8 @@ export default function InsightsPage() {
           ✨ Deep Personal Insights
         </h1>
         <p className="text-slate-600 leading-relaxed">
-          Tvoj personalizirani emocionalni i kognitivni profil — generiran kroz stotine signala iz svih tvojih unosa.
-          Minimalno, jasno, profesionalno. Uvidi koji te vode naprijed.
+          Tvoj personalizirani emocionalni i kognitivni profil — generiran kroz
+          stotine signala iz svih tvojih unosa. Minimalno, jasno, profesionalno.
         </p>
       </header>
 

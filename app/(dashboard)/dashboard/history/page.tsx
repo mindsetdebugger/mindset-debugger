@@ -1,8 +1,7 @@
-"use client";
+ "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { supabaseBrowser } from "@/lib/supabase/client";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,9 @@ import {
   SmilePlus,
 } from "lucide-react";
 
+import { useEntriesStore } from "@/lib/store/useEntriesStore"; 
+// ⬆️ Ovo je jedina promjena
+
 type EntryRow = {
   id: string;
   user_id: string;
@@ -28,10 +30,14 @@ type EntryRow = {
 };
 
 export default function HistoryPage() {
-  const supabase = supabaseBrowser();
 
-  const [entries, setEntries] = useState<EntryRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ⬇️ Zamjena tvog lokalnog state-a za store
+  const {
+    entries,
+    loaded,
+    loading,
+    fetchAll
+  } = useEntriesStore();
 
   // filters
   const [emotionFilter, setEmotionFilter] = useState<string>("all");
@@ -42,35 +48,17 @@ export default function HistoryPage() {
   const [dateTo, setDateTo] = useState<string>("");
 
   // ===========================
-  // LOAD ENTRIES
+  // LOAD ENTRIES — Zustand
   // ===========================
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const { data: session } = await supabase.auth.getUser();
-      const user = session?.user;
-      if (!user) {
-        setEntries([]);
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("entries")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (!error && data) {
-        setEntries(data as EntryRow[]);
-      }
-
-      setLoading(false);
-    })();
-  }, [supabase]);
+    if (!loaded && !loading) {
+      fetchAll();
+    }
+  }, [loaded, loading, fetchAll]);
+  // ⬆️ to je cijela zamjena
 
   // ===========================
-  // DERIVED DATA
+  // DERIVED DATA (ISTO)
   // ===========================
   const uniqueEmotions = useMemo(() => {
     const set = new Set<string>();
@@ -125,7 +113,6 @@ export default function HistoryPage() {
       }
       if (dateTo) {
         const to = new Date(dateTo);
-        // include entire end day
         to.setHours(23, 59, 59, 999);
         if (created > to) return false;
       }
@@ -191,6 +178,32 @@ export default function HistoryPage() {
     if (score >= 70) return "text-emerald-600";
     if (score >= 40) return "text-amber-500";
     return "text-rose-500";
+  }
+
+  // ===========================
+  // RENDER
+  // ===========================
+  if (!loaded) {
+    return (
+      <div className="px-4 md:px-10 py-10 text-slate-500">
+        Loading history…
+      </div>
+    );
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="px-4 md:px-10 py-10 space-y-4">
+        <h1 className="text-2xl font-semibold">History</h1>
+        <p className="text-slate-500">
+          Još nemaš niti jedan unos. Započni s novim zapisom na{" "}
+          <Link href="/dashboard" className="text-indigo-600 underline">
+            Dashboardu
+          </Link>
+          .
+        </p>
+      </div>
+    );
   }
 
   // ===========================

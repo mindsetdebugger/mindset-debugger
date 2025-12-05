@@ -1,90 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { supabaseBrowser } from "@/lib/supabase/client";
-
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 import {
   Bot,
   Sparkles,
   Sunrise,
   CalendarDays,
-  Target,
   HeartHandshake,
   Trophy,
   Loader2,
   RefreshCw,
 } from "lucide-react";
 
-// ==============================
-// Types
-// ==============================
-type CoachingRecommendations = {
-  focus_for_today: string;
-  focus_for_tomorrow: string;
-  optimal_strategy: string;
-  motivation_driver: string;
-  energy_management: string;
-};
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-type ProgressTracking = {
-  consistency_score: number;
-  streak_days: number;
-  recent_wins: string[];
-  areas_to_improve: string[];
-};
-
-type ActionsBlock = {
-  today_micro_step: string;
-  tomorrow_focus: string;
-  potential_pitfall: string;
-  supportive_mindset: string;
-};
-
-type DeepAnalysis = {
-  summary: string;
-  actions: ActionsBlock;
-  coaching_recommendations?: CoachingRecommendations;
-  progress_tracking?: ProgressTracking;
-};
-
-type EntryRow = {
-  id: string;
-  user_id: string;
-  created_at: string;
-  content: string;
-  analysis: DeepAnalysis;
-};
-
-type CoachLayers = {
-  daily?: {
-    anchor_sentence: string;
-    reassurance: string;
-    reminder: string;
-  };
-  weekly?: {
-    weekly_theme: string;
-    weekly_focus_areas: string[];
-    weekly_key_actions: string[];
-    weekly_pitfall: string;
-    weekly_supportive_message: string;
-  };
-  long_term?: {
-    long_term_direction: string;
-    long_term_focus_areas: string[];
-    skill_building_focus: string[];
-    when_you_slip: string;
-  };
-};
-
-type HistorySummaryRow = {
-  summary_short?: string;
-  coach_layers?: CoachLayers;
-};
+import { useAppStore } from "@/lib/store/useAppStore";
 
 // Animation preset
 const fadeIn = {
@@ -92,92 +26,26 @@ const fadeIn = {
   visible: { opacity: 1, y: 0 },
 };
 
-// ==============================
-// Page
-// ==============================
+// =============================================
+// PAGE
+// =============================================
 export default function CoachPage() {
-  const supabase = supabaseBrowser();
+  const {
+    loading,
+    refreshing,
+    latestEntry,
+    historySummary,
+    loadAll,
+    regenerateCoach,
+  } = useAppStore();
 
-  const [latestEntry, setLatestEntry] = useState<EntryRow | null>(null);
-  const [historySummary, setHistorySummary] =
-    useState<HistorySummaryRow | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  // -------------------------------------------------
-  // Load data
-  // -------------------------------------------------
+  // Load everything on mount
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-
-      const { data: session } = await supabase.auth.getUser();
-      const user = session?.user;
-
-      if (!user) {
-        setLatestEntry(null);
-        setHistorySummary(null);
-        setLoading(false);
-        return;
-      }
-
-      const { data: entriesData } = await supabase
-        .from("entries")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      if (entriesData?.length) setLatestEntry(entriesData[0]);
-
-      const { data: summaryData } = await supabase
-        .from("history_summaries")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (summaryData) setHistorySummary(summaryData);
-
-      setLoading(false);
-    })();
-  }, [supabase]);
+    loadAll();
+  }, [loadAll]);
 
   // -------------------------------------------------
-  // Regenerate Coach
-  // -------------------------------------------------
-  async function regenerate() {
-    setRefreshing(true);
-
-    const { data: session } = await supabase.auth.getUser();
-    const user = session?.user;
-    if (!user) return;
-
-    const { data: lastEntry } = await supabase
-      .from("entries")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    await fetch("/api/compass", {
-      method: "POST",
-      body: JSON.stringify({ analysis: lastEntry?.analysis || {} }),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const { data } = await supabase
-      .from("history_summaries")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    setHistorySummary(data || null);
-    setRefreshing(false);
-  }
-
-  // -------------------------------------------------
-  // If no data
+  // If loading
   // -------------------------------------------------
   if (loading)
     return (
@@ -186,6 +54,9 @@ export default function CoachPage() {
       </div>
     );
 
+  // -------------------------------------------------
+  // No entries yet
+  // -------------------------------------------------
   if (!latestEntry) {
     return (
       <div className="py-12 space-y-4 px-4">
@@ -206,7 +77,11 @@ export default function CoachPage() {
     );
   }
 
+  // -------------------------------------------------
+  // Data extraction
+  // -------------------------------------------------
   const a = latestEntry.analysis;
+
   const coach = historySummary?.coach_layers || {};
   const daily = coach.daily || {};
   const weekly = coach.weekly || {};
@@ -226,9 +101,9 @@ export default function CoachPage() {
     !!longTerm.long_term_focus_areas?.length ||
     !!longTerm.skill_building_focus?.length;
 
-  // ==============================
+  // =============================================
   // RENDER
-  // ==============================
+  // =============================================
   return (
     <motion.div
       className="py-10 space-y-12"
@@ -237,7 +112,7 @@ export default function CoachPage() {
       variants={{ visible: { transition: { staggerChildren: 0.04 } } }}
     >
       {/* ============================================= */}
-      {/* HERO — white, simple, JUUNO-style */}
+      {/* HERO */}
       {/* ============================================= */}
       <motion.section
         className="rounded-3xl bg-white shadow-lg border border-slate-200 p-7 md:p-10"
@@ -267,7 +142,7 @@ export default function CoachPage() {
           </div>
 
           <Button
-            onClick={regenerate}
+            onClick={regenerateCoach}
             variant="outline"
             className="flex items-center gap-2"
             disabled={refreshing}
@@ -297,6 +172,7 @@ export default function CoachPage() {
               Daily Coaching
             </CardTitle>
           </CardHeader>
+
           <CardContent className="space-y-4 text-slate-800">
             <div className="grid md:grid-cols-2 gap-4">
               <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100 shadow-sm">
@@ -349,6 +225,7 @@ export default function CoachPage() {
                 Your Recent Wins
               </CardTitle>
             </CardHeader>
+
             <CardContent className="text-emerald-900 text-sm space-y-2">
               {prog.recent_wins?.length ? (
                 <ul className="list-disc list-inside space-y-1">
@@ -357,7 +234,9 @@ export default function CoachPage() {
                   ))}
                 </ul>
               ) : (
-                <p>Nema eksplicitnih winova — ali refleksija sama po sebi je win.</p>
+                <p>
+                  Nema eksplicitnih winova — ali refleksija sama po sebi je win.
+                </p>
               )}
             </CardContent>
           </Card>
@@ -370,6 +249,7 @@ export default function CoachPage() {
                 Gentle Areas to Improve
               </CardTitle>
             </CardHeader>
+
             <CardContent className="text-rose-900 text-sm space-y-2">
               {prog.areas_to_improve?.length ? (
                 <ul className="list-disc list-inside space-y-1">
@@ -411,7 +291,7 @@ export default function CoachPage() {
           </CardHeader>
 
           <CardContent className="grid md:grid-cols-2 gap-6 text-sm">
-            {/* Left */}
+            {/* --- LEFT --- */}
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
                 <p className="text-[11px] uppercase text-indigo-700 font-semibold mb-1">
@@ -456,7 +336,7 @@ export default function CoachPage() {
               </div>
             </div>
 
-            {/* Right */}
+            {/* --- RIGHT --- */}
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100">
                 <p className="text-[11px] uppercase text-rose-700 font-semibold mb-1">
@@ -483,7 +363,7 @@ export default function CoachPage() {
       </motion.section>
 
       {/* ============================================= */}
-      {/* LONG-TERM COACHING */}
+      {/* LONG-TERM */}
       {/* ============================================= */}
       {hasLongTerm && (
         <motion.section variants={fadeIn}>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
 
 import {
   Card,
@@ -44,9 +43,10 @@ import {
   buildPatternFrequency,
   buildWeeklySummaries,
   deriveForecast,
-  type EntryRow,
 } from "@/lib/trends-helpers";
 import { SaveToNotesButton } from "@/components/SaveToNotesButton";
+import { useEntriesStore } from "@/lib/store/useEntriesStore";
+import { useSummaryStore } from "@/lib/store/useSummaryStore";
 
 
 // pastel color palette
@@ -60,70 +60,78 @@ const COLORS = [
   "#facc15",
 ];
 
-
 export default function TrendsPage() {
-  const supabase = supabaseBrowser();
+  const {
+    entries,
+    loading: entriesLoading,
+    loaded: entriesLoaded,
+    fetchAll,
+  } = useEntriesStore();
 
-  const [loading, setLoading] = useState(true);
-  const [entries, setEntries] = useState<EntryRow[]>([]);
-  const [summary, setSummary] = useState<any | null>(null);
+  const {
+    summary,
+    loading: summaryLoading,
+    loaded: summaryLoaded,
+    fetchSummary,
+  } = useSummaryStore();
 
-  const [mindsetSeries, setMindsetSeries] = useState([]);
-  const [emotionSeries, setEmotionSeries] = useState([]);
-  const [emotionDistribution, setEmotionDistribution] = useState([]);
-  const [patternFrequency, setPatternFrequency] = useState([]);
-  const [weeklySummaries, setWeeklySummaries] = useState([]);
+  const [mindsetSeries, setMindsetSeries] = useState<any[]>([]);
+  const [emotionSeries, setEmotionSeries] = useState<any[]>([]);
+  const [emotionDistribution, setEmotionDistribution] = useState<any[]>([]);
+  const [patternFrequency, setPatternFrequency] = useState<any[]>([]);
+  const [weeklySummaries, setWeeklySummaries] = useState<any[]>([]);
 
-  // load everything
+  // ensure data
   useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
+    if (!entriesLoaded && !entriesLoading) {
+      fetchAll();
+    }
+    if (!summaryLoaded && !summaryLoading) {
+      fetchSummary();
+    }
+  }, [
+    entriesLoaded,
+    entriesLoading,
+    fetchAll,
+    summaryLoaded,
+    summaryLoading,
+    fetchSummary,
+  ]);
 
-        const { data: session } = await supabase.auth.getUser();
-        const user = session?.user;
-        if (!user) return;
+  // build derived series when entries change
+  useEffect(() => {
+    if (!entries.length) {
+      setMindsetSeries([]);
+      setEmotionSeries([]);
+      setEmotionDistribution([]);
+      setPatternFrequency([]);
+      setWeeklySummaries([]);
+      return;
+    }
 
-        const { data: summaryData } = await supabase
-          .from("history_summaries")
-          .select("*")
-          .eq("user_id", user.id)
-          .maybeSingle();
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
 
-        setSummary(summaryData || null);
+    const recentEntries = entries.filter(
+      (e) => new Date(e.created_at) >= since
+    );
 
-        const since = new Date();
-        since.setDate(since.getDate() - 30);
+    const cleanEntries = recentEntries.map((e) => ({
+      created_at: e.created_at,
+      analysis: e.analysis,
+    }));
 
-        const { data: entryData } = await supabase
-          .from("entries")
-          .select("created_at, analysis")
-          .eq("user_id", user.id)
-          .gte("created_at", since.toISOString())
-          .order("created_at", { ascending: true });
-
-        const cleanEntries: any = (entryData || []).map((e: any) => ({
-          created_at: e.created_at,
-          analysis: e.analysis,
-        }));
-
-        setEntries(cleanEntries);
-
-        setMindsetSeries(buildMindsetSeries(cleanEntries));
-        setEmotionSeries(buildEmotionIntensitySeries(cleanEntries));
-        setEmotionDistribution(buildEmotionDistribution(cleanEntries));
-        setPatternFrequency(buildPatternFrequency(cleanEntries));
-        setWeeklySummaries(buildWeeklySummaries(cleanEntries));
-
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+    setMindsetSeries(buildMindsetSeries(cleanEntries));
+    setEmotionSeries(buildEmotionIntensitySeries(cleanEntries));
+    setEmotionDistribution(buildEmotionDistribution(cleanEntries));
+    setPatternFrequency(buildPatternFrequency(cleanEntries));
+    setWeeklySummaries(buildWeeklySummaries(cleanEntries));
+  }, [entries]);
 
   const trends = summary?.trends_page || null;
   const forecastText = deriveForecast(trends);
 
+  const loading = (!entriesLoaded && entriesLoading) || (!summaryLoaded && summaryLoading);
 
   if (loading)
     return (
@@ -132,13 +140,10 @@ export default function TrendsPage() {
       </div>
     );
 
-
   return (
     <div className="py-12 space-y-14">
 
-      {/* -------------------------------------------------------- */}
       {/* HEADER */}
-      {/* -------------------------------------------------------- */}
       <header className="space-y-3 max-w-3xl">
         <h1 className="text-4xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
           📈 Long-Term Trends
@@ -149,16 +154,14 @@ export default function TrendsPage() {
         </p>
       </header>
 
-
-
-      {/* -------------------------------------------------------- */}
       {/* TOP SUMMARY BANNER */}
-      {/* -------------------------------------------------------- */}
-      <section className="
+      <section
+        className="
         rounded-3xl 
         bg-gradient-to-r from-indigo-600 via-purple-600 to-sky-500
         text-white px-6 py-10 md:px-10 shadow-xl
-      ">
+      "
+      >
         <div className="flex justify-between items-start">
           <div className="space-y-2 max-w-xl">
             <h2 className="text-3xl font-semibold flex items-center gap-2">
@@ -188,13 +191,8 @@ export default function TrendsPage() {
         )}
       </section>
 
-
-
-      {/* -------------------------------------------------------- */}
       {/* TOP CARDS */}
-      {/* -------------------------------------------------------- */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
         {/* AVG MINDSET */}
         <Card className="rounded-2xl shadow-md border-slate-200 bg-white">
           <CardHeader className="flex justify-between items-center">
@@ -219,7 +217,6 @@ export default function TrendsPage() {
           </CardContent>
         </Card>
 
-
         {/* STABILITY */}
         <Card className="rounded-2xl shadow-md border-slate-200 bg-white">
           <CardHeader className="flex justify-between items-center">
@@ -243,7 +240,6 @@ export default function TrendsPage() {
             <Brain className="h-8 w-8 text-emerald-500" />
           </CardContent>
         </Card>
-
 
         {/* MOMENTUM */}
         <Card className="rounded-2xl shadow-md border-slate-200 bg-white">
@@ -284,16 +280,10 @@ export default function TrendsPage() {
             <Sparkles className="h-8 w-8 text-purple-500" />
           </CardContent>
         </Card>
-
       </section>
 
-
-
-      {/* -------------------------------------------------------- */}
-      {/*  MAIN CHARTS */}
-      {/* -------------------------------------------------------- */}
+      {/* MAIN CHARTS */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
         {/* MINDSET TREND */}
         <Card className="rounded-3xl shadow-lg border-slate-200 bg-white">
           <CardHeader className="flex justify-between items-center">
@@ -325,7 +315,6 @@ export default function TrendsPage() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-
 
         {/* EMOTION INTENSITY */}
         <Card className="rounded-3xl shadow-lg border-slate-200 bg-white">
@@ -367,16 +356,10 @@ export default function TrendsPage() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-
       </section>
 
-
-
-      {/* -------------------------------------------------------- */}
       {/* SECONDARY DATA: PIE + BARS */}
-      {/* -------------------------------------------------------- */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
         {/* EMOTION DISTRIBUTION */}
         <Card className="rounded-3xl shadow-lg border-slate-200 bg-white">
           <CardHeader className="flex justify-between items-center">
@@ -410,7 +393,6 @@ export default function TrendsPage() {
           </CardContent>
         </Card>
 
-
         {/* PATTERN FREQUENCY */}
         <Card className="rounded-3xl shadow-lg border-slate-200 bg-white">
           <CardHeader className="flex justify-between items-center">
@@ -434,14 +416,9 @@ export default function TrendsPage() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-
       </section>
 
-
-
-      {/* -------------------------------------------------------- */}
       {/* WEEKLY SUMMARIES */}
-      {/* -------------------------------------------------------- */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-slate-800">
           Tjedni uzorci
@@ -457,9 +434,9 @@ export default function TrendsPage() {
                   title={`Weekly Summary: ${w.label}`}
                   content={[
                     `Mindset: ${w.avgMindset}`,
-                    `Emotion: ${w.dominantEmotion}`,
-                    `Pattern: ${w.dominantPattern}`,
-                    `Entries: ${w.entriesCount}`,
+                    `Emocija: ${w.dominantEmotion}`,
+                    `Obrazac: ${w.dominantPattern}`,
+                    `Zapisi: ${w.entriesCount}`,
                   ]}
                   tags={["weekly"]}
                 />
@@ -476,16 +453,14 @@ export default function TrendsPage() {
         </div>
       </section>
 
-
-
-      {/* -------------------------------------------------------- */}
       {/* FORECAST */}
-      {/* -------------------------------------------------------- */}
       <section>
-        <Card className="
+        <Card
+          className="
           rounded-3xl shadow-lg border-slate-200
           bg-gradient-to-r from-slate-50 to-emerald-50
-        ">
+        "
+        >
           <CardHeader className="flex justify-between items-center">
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="text-emerald-600" />
@@ -506,7 +481,6 @@ export default function TrendsPage() {
           </CardContent>
         </Card>
       </section>
-
     </div>
   );
 }

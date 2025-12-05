@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -22,127 +21,66 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useAppStore } from "@/lib/store/useAppStore";
 
 // --------------------------------------------------
-// Types
+// Badge component
 // --------------------------------------------------
-type CompassProfile = {
-  core_values: string[];
-  default_emotional_style: string;
-  default_thinking_style: string;
-  core_fears: string[];
-  core_desires: string[];
-  vulnerabilities: string[];
-  protective_factors: string[];
-  long_term_triggers: string[];
-  identity_drivers: string[];
-  psychological_formula: string;
-  last_generated: string;
-};
+function Badge({
+  children,
+  color,
+}: {
+  children: React.ReactNode;
+  color: string;
+}) {
+  return (
+    <span
+      className={`
+        px-3 py-1 rounded-xl text-sm border whitespace-nowrap
+        ${color}
+      `}
+    >
+      {children}
+    </span>
+  );
+}
 
+// --------------------------------------------------
+// PAGE
+// --------------------------------------------------
 export default function CompassPage() {
-  const supabase = supabaseBrowser();
+  const {
+    compassProfile,
+    loading,
+    refreshing,
+    regenerateCompass,
+    loadCompassProfile,
+  } = useAppStore();
 
-  const [compass, setCompass] = useState<CompassProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  // --------------------------------------------------
-  // Load Compass Profile
-  // --------------------------------------------------
+  // -------------------------------------------
+  // Load Compass Profile on mount
+  // -------------------------------------------
   useEffect(() => {
-    (async () => {
-      setLoading(true);
+    loadCompassProfile();
+  }, [loadCompassProfile]);
 
-      try {
-        const res = await fetch("/api/compass", { method: "GET" });
-        const json = await res.json();
-
-        if (res.ok) setCompass(json.compass || null);
-        else setCompass(null);
-      } catch {
-        setCompass(null);
-      }
-
-      setLoading(false);
-    })();
-  }, []);
-
-  // --------------------------------------------------
-  // Auto-weekly regeneration
-  // --------------------------------------------------
+  // -------------------------------------------
+  // Auto-weekly regeneration (works the same)
+  // -------------------------------------------
   useEffect(() => {
-    if (!compass) return;
+    if (!compassProfile) return;
 
-    const last = new Date(compass.last_generated);
+    const last = new Date(compassProfile.last_generated);
     const oneWeek = 7 * 24 * 60 * 60 * 1000;
 
     if (Date.now() - last.getTime() > oneWeek) {
       regenerateCompass();
     }
-  }, [compass]);
+  }, [compassProfile, regenerateCompass]);
 
-  // --------------------------------------------------
-  // Manual regeneration
-  // --------------------------------------------------
-  async function regenerateCompass() {
-    setRefreshing(true);
-
-    const { data: session } = await supabase.auth.getUser();
-    const user = session?.user;
-    if (!user) return;
-
-    const { data: lastEntry } = await supabase
-      .from("entries")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    await fetch("/api/compass", {
-      method: "POST",
-      body: JSON.stringify({ analysis: lastEntry?.analysis ?? {} }),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    // Reload updated profile
-    const { data } = await supabase
-      .from("compass_profiles")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    setCompass(data || null);
-
-    setRefreshing(false);
-  }
-
-  // --------------------------------------------------
-  // UI Components
-  // --------------------------------------------------
-  function Badge({
-    children,
-    color,
-  }: {
-    children: React.ReactNode;
-    color: string;
-  }) {
-    return (
-      <span
-        className={`
-          px-3 py-1 rounded-xl text-sm border whitespace-nowrap
-          ${color}
-        `}
-      >
-        {children}
-      </span>
-    );
-  }
-
-  // --------------------------------------------------
+  // -------------------------------------------
   // Loading
-  // --------------------------------------------------
+  // -------------------------------------------
   if (loading) {
     return (
       <div className="py-20 flex justify-center text-slate-500">
@@ -151,10 +89,10 @@ export default function CompassPage() {
     );
   }
 
-  // --------------------------------------------------
+  // -------------------------------------------
   // No Compass Yet
-  // --------------------------------------------------
-  if (!compass) {
+  // -------------------------------------------
+  if (!compassProfile) {
     return (
       <div className="text-center py-20 space-y-6 px-6">
         <h2 className="text-xl font-semibold text-slate-700">
@@ -177,7 +115,7 @@ export default function CompassPage() {
     );
   }
 
-  const c = compass;
+  const c = compassProfile;
 
   // --------------------------------------------------
   // RENDER
@@ -228,6 +166,7 @@ export default function CompassPage() {
               <Heart className="text-rose-500" /> Core Values
             </CardTitle>
           </CardHeader>
+
           <CardContent className="flex flex-wrap gap-3">
             {c.core_values.map((v, i) => (
               <Badge key={i} color="bg-rose-50 text-rose-700 border-rose-200">
@@ -244,6 +183,7 @@ export default function CompassPage() {
               <Brain className="text-indigo-600" /> Emotional Style
             </CardTitle>
           </CardHeader>
+
           <CardContent className="text-slate-700 text-sm leading-relaxed">
             {c.default_emotional_style}
           </CardContent>
@@ -256,6 +196,7 @@ export default function CompassPage() {
               🧠 Thinking Style
             </CardTitle>
           </CardHeader>
+
           <CardContent className="text-slate-700 text-sm leading-relaxed">
             {c.default_thinking_style}
           </CardContent>
@@ -268,6 +209,7 @@ export default function CompassPage() {
               <Flame className="text-amber-500" /> Core Fears
             </CardTitle>
           </CardHeader>
+
           <CardContent className="flex flex-wrap gap-3">
             {c.core_fears.map((v, i) => (
               <Badge key={i} color="bg-amber-50 text-amber-700 border-amber-200">
@@ -284,6 +226,7 @@ export default function CompassPage() {
               <AlertTriangle className="text-red-500" /> Vulnerabilities
             </CardTitle>
           </CardHeader>
+
           <CardContent className="flex flex-wrap gap-3">
             {c.vulnerabilities.map((v, i) => (
               <Badge key={i} color="bg-red-50 text-red-700 border-red-200">
@@ -300,9 +243,13 @@ export default function CompassPage() {
               <ShieldCheck className="text-emerald-600" /> Protective Factors
             </CardTitle>
           </CardHeader>
+
           <CardContent className="flex flex-wrap gap-3">
             {c.protective_factors.map((v, i) => (
-              <Badge key={i} color="bg-emerald-50 text-emerald-700 border-emerald-200">
+              <Badge
+                key={i}
+                color="bg-emerald-50 text-emerald-700 border-emerald-200"
+              >
                 {v}
               </Badge>
             ))}
@@ -316,9 +263,13 @@ export default function CompassPage() {
               ⚡ Long-Term Triggers
             </CardTitle>
           </CardHeader>
+
           <CardContent className="flex flex-wrap gap-3">
             {c.long_term_triggers.map((v, i) => (
-              <Badge key={i} color="bg-indigo-50 text-indigo-700 border-indigo-200">
+              <Badge
+                key={i}
+                color="bg-indigo-50 text-indigo-700 border-indigo-200"
+              >
                 {v}
               </Badge>
             ))}
@@ -337,7 +288,6 @@ export default function CompassPage() {
             {c.psychological_formula}
           </CardContent>
         </Card>
-
       </div>
     </div>
   );

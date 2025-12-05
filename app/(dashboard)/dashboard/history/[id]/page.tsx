@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabaseBrowser } from "@/lib/supabase/client";
 
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 
 import {
@@ -22,78 +28,46 @@ import {
   Target,
   ListTree,
 } from "lucide-react";
-
-type EntryRow = {
-  id: string;
-  user_id: string;
-  content: string;
-  created_at: string;
-  analysis: any | null;
-};
-
-// emotion style mapping (same vibe kao Insights)
-const emotionStyles: Record<
-  string,
-  { emoji: string; bg: string; text: string; ring: string }
-> = {
-  joy: {
-    emoji: "😊",
-    bg: "bg-amber-50",
-    text: "text-amber-800",
-    ring: "ring-amber-200",
-  },
-  happiness: {
-    emoji: "😄",
-    bg: "bg-amber-50",
-    text: "text-amber-800",
-    ring: "ring-amber-200",
-  },
-  calm: {
-    emoji: "😌",
-    bg: "bg-sky-50",
-    text: "text-sky-800",
-    ring: "ring-sky-200",
-  },
-  anxiety: {
-    emoji: "😰",
-    bg: "bg-indigo-50",
-    text: "text-indigo-900",
-    ring: "ring-indigo-200",
-  },
-  stress: {
-    emoji: "😵‍💫",
-    bg: "bg-rose-50",
-    text: "text-rose-800",
-    ring: "ring-rose-200",
-  },
-  sadness: {
-    emoji: "😢",
-    bg: "bg-blue-50",
-    text: "text-blue-800",
-    ring: "ring-blue-200",
-  },
-  hope: {
-    emoji: "🌱",
-    bg: "bg-emerald-50",
-    text: "text-emerald-800",
-    ring: "ring-emerald-200",
-  },
-  frustration: {
-    emoji: "😤",
-    bg: "bg-red-50",
-    text: "text-red-800",
-    ring: "ring-red-200",
-  },
-  fear: {
-    emoji: "😨",
-    bg: "bg-indigo-50",
-    text: "text-indigo-800",
-    ring: "ring-indigo-200",
-  },
-};
+import { useEntriesStore } from "@/lib/store/useEntriesStore";
 
 function styleForEmotion(name: string) {
-  const key = name?.toLowerCase?.().trim();
+  const emotionStyles: Record<
+    string,
+    { emoji: string; bg: string; text: string; ring: string }
+  > = {
+    joy: {
+      emoji: "😊",
+      bg: "bg-amber-50",
+      text: "text-amber-800",
+      ring: "ring-amber-200",
+    },
+    calm: {
+      emoji: "😌",
+      bg: "bg-sky-50",
+      text: "text-sky-800",
+      ring: "ring-sky-200",
+    },
+    anxiety: {
+      emoji: "😰",
+      bg: "bg-indigo-50",
+      text: "text-indigo-900",
+      ring: "ring-indigo-200",
+    },
+    sadness: {
+      emoji: "😢",
+      bg: "bg-blue-50",
+      text: "text-blue-800",
+      ring: "ring-blue-200",
+    },
+    stress: {
+      emoji: "😵‍💫",
+      bg: "bg-rose-50",
+      text: "text-rose-800",
+      ring: "ring-rose-200",
+    },
+  };
+
+  const key = name?.toLowerCase();
   return (
     emotionStyles[key] || {
       emoji: "🧠",
@@ -115,87 +89,43 @@ export default function HistoryDetailPage() {
   const params = useParams();
   const id = params?.id as string;
   const router = useRouter();
-  const supabase = supabaseBrowser();
 
-  const [entries, setEntries] = useState<EntryRow[]>([]);
+  const {
+    entries,
+    loaded,
+    loading,
+    fetchAll,
+    getEntryById,
+  } = useEntriesStore();
+
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
 
   // ===========================
-  // LOAD ALL ENTRIES + FIND CURRENT
+  // LOAD ALL ENTRIES ONCE
   // ===========================
   useEffect(() => {
-    (async () => {
-      if (!id) return;
-      setLoading(true);
+    if (!loaded && !loading) fetchAll();
+  }, [loaded, loading, fetchAll]);
 
-      const { data: session } = await supabase.auth.getUser();
-      const user = session?.user;
-      if (!user) {
-        setEntries([]);
-        setCurrentIndex(null);
-        setLoading(false);
-        return;
-      }
+  // ===========================
+  // FIND CURRENT INDEX
+  // ===========================
+  useEffect(() => {
+    if (!loaded || entries.length === 0) return;
 
-      const { data, error } = await supabase
-        .from("entries")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+    const idx = entries.findIndex((e) => e.id === id);
+    setCurrentIndex(idx >= 0 ? idx : null);
+  }, [id, entries, loaded]);
 
-      if (!error && data) {
-        const list = data as EntryRow[];
-        setEntries(list);
-
-        const idx = list.findIndex((e) => e.id === id);
-        setCurrentIndex(idx >= 0 ? idx : null);
-      } else {
-        setEntries([]);
-        setCurrentIndex(null);
-      }
-
-      setLoading(false);
-    })();
-  }, [id, supabase]);
-
-  const entry = useMemo(() => {
-    if (currentIndex == null || currentIndex < 0 || currentIndex >= entries.length)
-      return null;
-    return entries[currentIndex];
-  }, [currentIndex, entries]);
-
-  const prevId =
-    currentIndex != null && currentIndex < entries.length - 1
-      ? entries[currentIndex + 1]?.id
-      : null; // older entry
-
-  const nextId =
-    currentIndex != null && currentIndex > 0
-      ? entries[currentIndex - 1]?.id
-      : null; // newer entry
-
-  function goPrev() {
-    if (prevId) router.push(`/dashboard/history/${prevId}`);
-  }
-
-  function goNext() {
-    if (nextId) router.push(`/dashboard/history/${nextId}`);
-  }
-
-  function handleExport() {
-    if (typeof window !== "undefined") {
-      window.print(); // user može odabrati "Save as PDF"
-    }
-  }
-
-  if (loading) {
+  if (loading || !loaded) {
     return (
       <div className="px-4 md:px-10 py-10 text-slate-500">
         Loading entry…
       </div>
     );
   }
+
+  const entry = getEntryById(id);
 
   if (!entry) {
     return (
@@ -207,14 +137,21 @@ export default function HistoryDetailPage() {
           <ArrowLeft className="w-4 h-4 mr-1" />
           Back to history
         </Link>
-        <p className="text-red-500 text-sm">
-          Entry not found or you do not have permission.
-        </p>
+        <p className="text-red-500 text-sm">Entry not found.</p>
       </div>
     );
   }
 
+  // ------------------------
+  // ENTRY DATA
+  // ------------------------
   const a = entry.analysis || {};
+  const tags: string[] = a.tags || [];
+
+  const primaryEmotions: any[] = a.emotions?.primary || [];
+  const secondaryEmotions: any[] = a.emotions?.secondary || [];
+  const bodySensations: string[] = a.emotions?.body_sensations || [];
+
   const created = new Date(entry.created_at);
   const dateLabel = created.toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -226,11 +163,34 @@ export default function HistoryDetailPage() {
     minute: "2-digit",
   });
 
-  const primaryEmotions: any[] = a.emotions?.primary || [];
-  const secondaryEmotions: any[] = a.emotions?.secondary || [];
-  const bodySensations: string[] = a.emotions?.body_sensations || [];
-  const tags: string[] = a.tags || [];
+  // ------------------------
+  // NEXT / PREVIOUS
+  // ------------------------
+  const prevId =
+    currentIndex != null && currentIndex < entries.length - 1
+      ? entries[currentIndex + 1]?.id
+      : null;
 
+  const nextId =
+    currentIndex != null && currentIndex > 0
+      ? entries[currentIndex - 1]?.id
+      : null;
+
+  function goPrev() {
+    if (prevId) router.push(`/dashboard/history/${prevId}`);
+  }
+
+  function goNext() {
+    if (nextId) router.push(`/dashboard/history/${nextId}`);
+  }
+
+  function handleExport() {
+    if (typeof window !== "undefined") window.print();
+  }
+
+  // ------------------------
+  // RENDER
+  // ------------------------
   return (
     <div className="px-4 md:px-10 py-10 space-y-8 print:px-6 print:py-6">
       {/* Top bar */}
@@ -243,6 +203,7 @@ export default function HistoryDetailPage() {
             <ArrowLeft className="w-4 h-4 mr-1" />
             Back to history
           </Link>
+
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
             Entry Details
             <span className="inline-flex items-center gap-1 text-xs rounded-full bg-slate-900 text-white px-2 py-1">
@@ -250,14 +211,19 @@ export default function HistoryDetailPage() {
               {dateLabel}
             </span>
           </h1>
+
           <p className="text-slate-500 text-sm mt-1 flex items-center gap-3">
             <span className="flex items-center gap-1">
               <Activity className="w-3 h-3 text-slate-400" />
-              <span className={`font-semibold ${scoreColor(a.mindset_score)}`}>
+              <span
+                className={`font-semibold ${scoreColor(a.mindset_score)}`}
+              >
                 Mindset score: {a.mindset_score ?? "—"}
               </span>
             </span>
+
             <span>·</span>
+
             <span className="flex items-center gap-1 text-xs text-slate-500">
               <CalendarDays className="w-3 h-3" />
               {timeLabel}
@@ -266,51 +232,25 @@ export default function HistoryDetailPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 md:justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            className="flex items-center gap-1"
-          >
-            <Download className="w-4 h-4" />
-            Print / PDF
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="w-4 h-4" /> Print / PDF
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!prevId}
-            onClick={goPrev}
-            className="flex items-center gap-1"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Previous
+          <Button variant="outline" size="sm" onClick={goPrev} disabled={!prevId}>
+            <ArrowLeft className="w-4 h-4" /> Previous
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!nextId}
-            onClick={goNext}
-            className="flex items-center gap-1"
-          >
-            Next
-            <ArrowRight className="w-4 h-4" />
+          <Button variant="outline" size="sm" onClick={goNext} disabled={!nextId}>
+            Next <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      {/* TAGS + META */}
+      {/* TAGS */}
       <div className="flex flex-wrap gap-2">
         {a.meta?.category && (
           <span className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-slate-900 text-white">
             {a.meta.category}
-          </span>
-        )}
-
-        {typeof a.meta?.distress_level === "number" && (
-          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
-            Distress: {a.meta.distress_level}/100
           </span>
         )}
 
@@ -319,17 +259,16 @@ export default function HistoryDetailPage() {
             key={t}
             className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200"
           >
-            <Tag className="w-3 h-3" />
-            {t}
+            <Tag className="w-3 h-3" /> {t}
           </span>
         ))}
       </div>
 
       {/* GRID LAYOUT */}
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)] gap-8">
-        {/* LEFT COLUMN: TEXT + ACTIONS */}
+      <div className="grid grid-cols-1 xl:grid-cols-[2fr_1.4fr] gap-8">
+        {/* LEFT: TEXT + INSIGHTS + ACTIONS */}
         <div className="space-y-6">
-          {/* Original text */}
+          {/* Original content */}
           <Card className="rounded-3xl border-slate-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -344,7 +283,7 @@ export default function HistoryDetailPage() {
             </CardContent>
           </Card>
 
-          {/* AI Insight + Summary */}
+          {/* AI Insights */}
           <Card className="rounded-3xl border-slate-200 bg-indigo-50/60">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -353,7 +292,7 @@ export default function HistoryDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm md:text-base text-indigo-900 leading-relaxed">
+              <p className="text-sm md:text-base text-indigo-900">
                 {a.ai_insight_today || "No insight available."}
               </p>
 
@@ -366,7 +305,7 @@ export default function HistoryDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Actions */}
+          {/* Action steps */}
           <Card className="rounded-3xl border-slate-200 bg-emerald-50/60">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -374,43 +313,28 @@ export default function HistoryDetailPage() {
                 Action Steps
               </CardTitle>
             </CardHeader>
+
             <CardContent className="grid sm:grid-cols-2 gap-4 text-sm">
-              <div className="rounded-2xl bg-white/80 border border-emerald-100 p-3">
-                <p className="text-[11px] font-semibold uppercase text-emerald-600">
-                  Today micro step
-                </p>
-                <p className="mt-1 text-slate-800">
-                  {a.actions?.today_micro_step || "—"}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-white/80 border border-emerald-100 p-3">
-                <p className="text-[11px] font-semibold uppercase text-emerald-600">
-                  Tomorrow focus
-                </p>
-                <p className="mt-1 text-slate-800">
-                  {a.actions?.tomorrow_focus || "—"}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-white/80 border border-emerald-100 p-3">
-                <p className="text-[11px] font-semibold uppercase text-emerald-600">
-                  Potential pitfall
-                </p>
-                <p className="mt-1 text-slate-800">
-                  {a.actions?.potential_pitfall || "—"}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-white/80 border border-emerald-100 p-3">
-                <p className="text-[11px] font-semibold uppercase text-emerald-600">
-                  Supportive mindset
-                </p>
-                <p className="mt-1 text-slate-800">
-                  {a.actions?.supportive_mindset || "—"}
-                </p>
-              </div>
+              {[
+                ["Today micro step", a.actions?.today_micro_step],
+                ["Tomorrow focus", a.actions?.tomorrow_focus],
+                ["Potential pitfall", a.actions?.potential_pitfall],
+                ["Supportive mindset", a.actions?.supportive_mindset],
+              ].map(([label, value], i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl bg-white/80 border border-emerald-100 p-3"
+                >
+                  <p className="text-[11px] font-semibold uppercase text-emerald-600">
+                    {label}
+                  </p>
+                  <p className="mt-1 text-slate-800">{value || "—"}</p>
+                </div>
+              ))}
             </CardContent>
           </Card>
 
-          {/* Root cause + Micro thoughts */}
+          {/* Root cause + micro thoughts */}
           <Card className="rounded-3xl border-slate-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -423,65 +347,35 @@ export default function HistoryDetailPage() {
                 <p className="text-[11px] font-semibold uppercase text-slate-500 mb-1">
                   Root cause
                 </p>
-                <p className="text-slate-800">
-                  {a.root_cause || "No root cause identified."}
-                </p>
+                <p className="text-slate-800">{a.root_cause || "—"}</p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3">
-                  <p className="text-[11px] font-semibold uppercase text-slate-500 mb-1">
-                    Core thought
-                  </p>
-                  <p className="text-slate-800">
-                    {a.micro_thoughts?.core_thought || "—"}
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3 space-y-1">
-                  <p className="text-[11px] font-semibold uppercase text-slate-500">
-                    Supporting thoughts
-                  </p>
-                  <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
-                    {(a.micro_thoughts?.supporting_thoughts || []).map(
-                      (t: string, i: number) => (
-                        <li key={i}>{t}</li>
-                      )
-                    )}
-                  </ul>
-                </div>
+                <MicroBlock
+                  label="Core thought"
+                  value={a.micro_thoughts?.core_thought}
+                />
+                <MicroList
+                  label="Supporting thoughts"
+                  list={a.micro_thoughts?.supporting_thoughts}
+                />
               </div>
 
               <div className="grid md:grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3 space-y-1">
-                  <p className="text-[11px] font-semibold uppercase text-slate-500">
-                    Hidden assumptions
-                  </p>
-                  <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
-                    {(a.micro_thoughts?.hidden_assumptions || []).map(
-                      (t: string, i: number) => (
-                        <li key={i}>{t}</li>
-                      )
-                    )}
-                  </ul>
-                </div>
-                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3 space-y-1">
-                  <p className="text-[11px] font-semibold uppercase text-slate-500">
-                    Emotional statements
-                  </p>
-                  <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
-                    {(a.micro_thoughts?.emotional_statements || []).map(
-                      (t: string, i: number) => (
-                        <li key={i}>{t}</li>
-                      )
-                    )}
-                  </ul>
-                </div>
+                <MicroList
+                  label="Hidden assumptions"
+                  list={a.micro_thoughts?.hidden_assumptions}
+                />
+                <MicroList
+                  label="Emotional statements"
+                  list={a.micro_thoughts?.emotional_statements}
+                />
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* RIGHT COLUMN: EMOTIONS + STATS + PATTERNS + REFRAMES */}
+        {/* RIGHT: EMOTIONS, STATS, PATTERNS, REFRAMES, SCAN */}
         <div className="space-y-6">
           {/* Emotions */}
           <Card className="rounded-3xl border-slate-200">
@@ -492,69 +386,12 @@ export default function HistoryDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              {/* Primary emotions */}
-              <div>
-                <p className="text-[11px] font-semibold uppercase text-slate-500 mb-2">
-                  Primary emotions
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  {primaryEmotions.length === 0 && (
-                    <p className="text-xs text-slate-500">No data.</p>
-                  )}
-                  {primaryEmotions.map((em, i) => {
-                    const s = styleForEmotion(em.emotion);
-                    return (
-                      <div
-                        key={i}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-2xl ring-1 shadow-sm ${s.bg} ${s.text} ${s.ring}`}
-                      >
-                        <span className="text-xl">{s.emoji}</span>
-                        <div className="leading-tight">
-                          <p className="font-semibold capitalize text-xs">
-                            {em.emotion}
-                          </p>
-                          <p className="text-[11px] opacity-80">
-                            Intensity: {em.intensity}/100
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Secondary */}
-              {secondaryEmotions.length > 0 && (
-                <div>
-                  <p className="text-[11px] font-semibold uppercase text-slate-500 mb-1">
-                    Secondary emotions
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {secondaryEmotions.map((em, i) => (
-                      <span
-                        key={i}
-                        className="text-xs px-2 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200 capitalize"
-                      >
-                        {em.emotion} ({em.intensity}/100)
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Body sensations */}
-              {bodySensations.length > 0 && (
-                <div>
-                  <p className="text-[11px] font-semibold uppercase text-slate-500 mb-1">
-                    Body sensations
-                  </p>
-                  <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
-                    {bodySensations.map((s: string, i: number) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <EmotionSection
+                title="Primary emotions"
+                emotions={primaryEmotions}
+              />
+              <SecondaryEmotionSection emotions={secondaryEmotions} />
+              <BodySection body={bodySensations} />
             </CardContent>
           </Card>
 
@@ -567,21 +404,16 @@ export default function HistoryDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-3 text-xs">
-              <StatPill label="Mindset score" value={a.mindset_score} />
-              <StatPill label="Clarity" value={a.stats?.clarity_score} />
-              <StatPill label="Stress" value={a.stats?.stress_marker} />
-              <StatPill
-                label="Motivation"
-                value={a.stats?.motivation_score}
-              />
-              <StatPill
-                label="Resilience"
-                value={a.stats?.resilience_marker}
-              />
-              <StatPill
-                label="Emotional stability"
-                value={a.stats?.emotional_stability_score}
-              />
+              {[
+                ["Mindset score", a.mindset_score],
+                ["Clarity", a.stats?.clarity_score],
+                ["Stress", a.stats?.stress_marker],
+                ["Motivation", a.stats?.motivation_score],
+                ["Resilience", a.stats?.resilience_marker],
+                ["Emotional stability", a.stats?.emotional_stability_score],
+              ].map(([label, value], i) => (
+                <StatPill key={i} label={label} value={value as number} />
+              ))}
             </CardContent>
           </Card>
 
@@ -608,7 +440,8 @@ export default function HistoryDetailPage() {
                   <p className="mt-1 text-slate-700">{p.explanation}</p>
                 </div>
               ))}
-              {(!a.cognitive_patterns || a.cognitive_patterns.length === 0) && (
+              {(!a.cognitive_patterns ||
+                a.cognitive_patterns.length === 0) && (
                 <p className="text-xs text-slate-500">No patterns detected.</p>
               )}
             </CardContent>
@@ -623,39 +456,32 @@ export default function HistoryDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-xs">
-              {a.reframes && (
-                <>
-                  <ReframeBlock label="Stoic" text={a.reframes.stoic} />
-                  <ReframeBlock
-                    label="CBT"
-                    text={a.reframes.cognitive_behavioral_therapy}
-                  />
-                  <ReframeBlock label="Logic" text={a.reframes.logic} />
-                  <ReframeBlock
-                    label="Self-compassion"
-                    text={a.reframes.self_compassion}
-                  />
-                  <ReframeBlock
-                    label="Growth mindset"
-                    text={a.reframes.growth_mindset_reframe}
-                  />
-                  <ReframeBlock
-                    label="Meta perspective"
-                    text={a.reframes.meta_perspective_reframe}
-                  />
-                  <ReframeBlock
-                    label="Action reframe"
-                    text={a.reframes.action_reframe}
-                  />
-                  <ReframeBlock
-                    label="Values-based"
-                    text={a.reframes.values_based_reframe}
-                  />
-                </>
-              )}
-              {!a.reframes && (
-                <p className="text-xs text-slate-500">No reframes available.</p>
-              )}
+              <ReframeBlock label="Stoic" text={a.reframes?.stoic} />
+              <ReframeBlock
+                label="CBT"
+                text={a.reframes?.cognitive_behavioral_therapy}
+              />
+              <ReframeBlock label="Logic" text={a.reframes?.logic} />
+              <ReframeBlock
+                label="Self-compassion"
+                text={a.reframes?.self_compassion}
+              />
+              <ReframeBlock
+                label="Growth mindset"
+                text={a.reframes?.growth_mindset_reframe}
+              />
+              <ReframeBlock
+                label="Meta perspective"
+                text={a.reframes?.meta_perspective_reframe}
+              />
+              <ReframeBlock
+                label="Action reframe"
+                text={a.reframes?.action_reframe}
+              />
+              <ReframeBlock
+                label="Values-based"
+                text={a.reframes?.values_based_reframe}
+              />
             </CardContent>
           </Card>
 
@@ -668,34 +494,33 @@ export default function HistoryDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-xs">
-              {(a.sentence_scan || []).map((sItem: any, i: number) => (
+              {(a.sentence_scan || []).map((s: any, i: number) => (
                 <div
                   key={i}
                   className="rounded-2xl bg-slate-50 border border-slate-200 p-3"
                 >
-                  <p className="text-slate-800 text-sm">
-                    “{sItem.sentence || ""}”
-                  </p>
+                  <p className="text-slate-800 text-sm">“{s.sentence}”</p>
                   <p className="mt-1 text-[11px] text-slate-500 flex flex-wrap gap-2">
                     <span className="px-2 py-0.5 rounded-full bg-slate-900 text-white">
-                      {sItem.type}
+                      {s.type}
                     </span>
-                    {sItem.emotion && (
+                    {s.emotion && (
                       <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                        emotion: {sItem.emotion}
+                        emotion: {s.emotion}
                       </span>
                     )}
-                    {sItem.pattern && (
+                    {s.pattern && (
                       <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                        pattern: {sItem.pattern}
+                        pattern: {s.pattern}
                       </span>
                     )}
                   </p>
-                  {sItem.notes && (
-                    <p className="mt-1 text-slate-600">{sItem.notes}</p>
+                  {s.notes && (
+                    <p className="mt-1 text-slate-600">{s.notes}</p>
                   )}
                 </div>
               ))}
+
               {(!a.sentence_scan || a.sentence_scan.length === 0) && (
                 <p className="text-xs text-slate-500">
                   No sentence scan available.
@@ -743,6 +568,116 @@ function ReframeBlock({ label, text }: { label: string; text?: string }) {
         {label}
       </p>
       <p className="text-slate-800">{text}</p>
+    </div>
+  );
+}
+
+function MicroBlock({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3">
+      <p className="text-[11px] font-semibold uppercase text-slate-500 mb-1">
+        {label}
+      </p>
+      <p className="text-slate-800">{value || "—"}</p>
+    </div>
+  );
+}
+
+function MicroList({ label, list }: { label: string; list?: string[] }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3 space-y-1">
+      <p className="text-[11px] font-semibold uppercase text-slate-500">
+        {label}
+      </p>
+      <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+        {(list || []).map((t, i) => (
+          <li key={i}>{t}</li>
+        ))}
+      </ul>
+      {(!list || list.length === 0) && (
+        <p className="text-xs text-slate-500">No data.</p>
+      )}
+    </div>
+  );
+}
+
+function EmotionSection({
+  title,
+  emotions,
+}: {
+  title: string;
+  emotions: any[];
+}) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase text-slate-500 mb-2">
+        {title}
+      </p>
+
+      <div className="flex flex-wrap gap-3">
+        {emotions.length === 0 && (
+          <p className="text-xs text-slate-500">No data.</p>
+        )}
+
+        {emotions.map((em, i) => {
+          const s = styleForEmotion(em.emotion);
+          return (
+            <div
+              key={i}
+              className={`flex items-center gap-2 px-3 py-2 rounded-2xl ring-1 shadow-sm ${s.bg} ${s.text} ${s.ring}`}
+            >
+              <span className="text-xl">{s.emoji}</span>
+              <div>
+                <p className="font-semibold capitalize text-xs">
+                  {em.emotion}
+                </p>
+                <p className="text-[11px] opacity-80">
+                  Intensity: {em.intensity}/100
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SecondaryEmotionSection({ emotions }: { emotions: any[] }) {
+  if (emotions.length === 0) return null;
+
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase text-slate-500 mb-1">
+        Secondary emotions
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {emotions.map((em, i) => (
+          <span
+            key={i}
+            className="text-xs px-2 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200 capitalize"
+          >
+            {em.emotion} ({em.intensity}/100)
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BodySection({ body }: { body: string[] }) {
+  if (body.length === 0) return null;
+
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase text-slate-500 mb-1">
+        Body sensations
+      </p>
+      <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+        {body.map((s, i) => (
+          <li key={i}>{s}</li>
+        ))}
+      </ul>
     </div>
   );
 }

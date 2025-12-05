@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-
-import { supabaseBrowser } from "@/lib/supabase/client";
 
 import {
   Card,
@@ -26,33 +24,11 @@ import {
 
 import { useUpdateSummary } from "@/app/hooks/useUpdateSummary";
 import { useWeeklyAIRefresh } from "@/app/hooks/useWeeklyAIRefresh";
-
-// ===============================
-// Types
-// ===============================
-type DeepAnalysis = {
-  summary: string;
-  emotions: {
-    primary: { emotion: string; intensity: number }[];
-  };
-  reframes: Record<string, string>;
-  actions: {
-    today_micro_step: string;
-    tomorrow_focus: string;
-    potential_pitfall: string;
-    supportive_mindset: string;
-  };
-  mindset_score: number;
-  ai_insight_today: string;
-};
-
-type EntryRow = {
-  id?: number;
-  user_id: string;
-  content: string;
-  created_at: string;
-  analysis: DeepAnalysis;
-};
+import {
+  useEntriesStore,
+  type EntryRow,
+  type DeepAnalysis,
+} from "@/lib/store/useEntriesStore";
 
 // ===============================
 // Emotion helpers
@@ -99,10 +75,17 @@ function isSameDay(a: Date, b: Date) {
 // Dashboard Page
 // ===============================
 export default function DashboardPage() {
-  const supabase = supabaseBrowser();
   const { updateSummary, loadingSummary } = useUpdateSummary();
-
   useWeeklyAIRefresh();
+
+  const {
+    entries,
+    latestEntry,
+    loading: entriesLoading,
+    loaded: entriesLoaded,
+    fetchAll,
+    createEntry,
+  } = useEntriesStore();
 
   // ===============================
   // LOCAL STATE
@@ -111,58 +94,34 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const [latestEntry, setLatestEntry] = useState<EntryRow | null>(null);
-  const [recentEntries, setRecentEntries] = useState<EntryRow[]>([]);
-  const [mindsetScore, setMindsetScore] = useState<number | null>(null);
-  const [aiInsight, setAiInsight] = useState<string | null>(null);
-  const [hasEntryToday, setHasEntryToday] = useState(false);
-
-  const [initialLoading, setInitialLoading] = useState(true);
-
-  // ===============================
-  // LOAD ENTRIES
-  // ===============================
+  // init load
   useEffect(() => {
-    (async () => {
-      const { data: session } = await supabase.auth.getUser();
-      const user = session?.user;
+    if (!entriesLoaded) {
+      fetchAll();
+    }
+  }, [entriesLoaded, fetchAll]);
 
-      if (!user) {
-        setInitialLoading(false);
-        return;
-      }
-
-      const { data } = await supabase
-        .from("entries")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (data) {
-        const typed = data as EntryRow[];
-
-        if (typed.length > 0) {
-          const latest = typed[0];
-          setLatestEntry(latest);
-          setMindsetScore(latest.analysis?.mindset_score ?? null);
-          setAiInsight(latest.analysis?.ai_insight_today ?? null);
-
-          const created = new Date(latest.created_at);
-          setHasEntryToday(isSameDay(created, new Date()));
-        }
-
-        setRecentEntries(typed.slice(0, 7));
-      }
-
-      setInitialLoading(false);
-    })();
-  }, [supabase]);
+  const initialLoading = !entriesLoaded && entriesLoading;
 
   // ===============================
-  // ACTIVE ENTRY
+  // ACTIVE ENTRY + DERIVED
   // ===============================
+  const recentEntries: EntryRow[] = useMemo(
+    () => entries.slice(0, 7),
+    [entries]
+  );
+
   const activeEntry = latestEntry;
   const activeDate = activeEntry ? new Date(activeEntry.created_at) : null;
+
+  const mindsetScore =
+    activeEntry?.analysis?.mindset_score ?? null;
+  const aiInsight =
+    activeEntry?.analysis?.ai_insight_today ?? null;
+
+  const hasEntryToday = activeEntry
+    ? isSameDay(new Date(activeEntry.created_at), new Date())
+    : false;
 
   const moodTimeline = useMemo(
     () =>
@@ -207,33 +166,14 @@ export default function DashboardPage() {
 
       const deep: DeepAnalysis = data.analysis;
 
-      const { data: session } = await supabase.auth.getUser();
-      const user = session?.user;
-
-      if (user) {
-        const createdAt = new Date().toISOString();
-
-        const newEntry: EntryRow = {
-          user_id: user.id,
-          content: input,
-          created_at: createdAt,
-          analysis: deep,
-        };
-
-        await supabase.from("entries").insert({
-          user_id: user.id,
-          content: input,
-          analysis: deep,
-        });
-
-        setLatestEntry(newEntry);
-        setRecentEntries((prev) => [newEntry, ...prev]);
-        setMindsetScore(deep.mindset_score);
-        setAiInsight(deep.ai_insight_today);
-        setHasEntryToday(true);
-
-        await updateSummary(deep);
+      const newEntry = await createEntry(input, deep);
+      if (!newEntry) {
+        setErrorMsg("Could not save entry.");
+        return;
       }
+
+      await updateSummary(deep);
+      setInput("");
     } catch (err: any) {
       setLoading(false);
       setErrorMsg(err.message);
@@ -276,13 +216,13 @@ export default function DashboardPage() {
             <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 border border-slate-200 shadow-sm">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
               <span className="font-medium text-slate-700">
-                {recentEntries.length || 0} reflections
+                {entries.length || 0} reflections
               </span>
             </span>
           </div>
         </header>
 
-        {/* HERO SECTION – light, Juuno style */}
+        {/* HERO SECTION */}
         <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#E2E9FF] via-[#D8E7FF] to-[#F8ECFF] px-6 py-8 md:px-10 md:py-10 shadow-[0_24px_60px_rgba(148,163,184,0.45)] border border-white">
           {/* Pastel blobs */}
           <div className="pointer-events-none absolute inset-0">
@@ -446,7 +386,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Ako još nema nijednog unosa */}
-        {!activeEntry && recentEntries.length === 0 && (
+        {!activeEntry && entries.length === 0 && (
           <section className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
             Nakon prvog unosa, ovdje ćeš vidjeti detaljnu analizu, emocije,
             score i povijest promjena kroz vrijeme.
@@ -627,27 +567,29 @@ export default function DashboardPage() {
                 <CardContent>
                   {activeEntry.analysis.emotions?.primary?.length ? (
                     <div className="flex flex-wrap gap-3">
-                      {activeEntry.analysis.emotions.primary.map((emo, index) => {
-                        const style = getEmotionStyle(emo.emotion);
-                        return (
-                          <div
-                            key={index}
-                            className={`flex items-start gap-2 rounded-2xl px-3 py-2 text-xs md:text-sm ring-1 ${style.bg} ${style.text} ${style.ring} shadow-sm`}
-                          >
-                            <span className="text-lg mt-[1px]">
-                              {style.emoji}
-                            </span>
-                            <div className="flex flex-col">
-                              <span className="font-semibold capitalize">
-                                {emo.emotion}
+                      {activeEntry.analysis.emotions.primary.map(
+                        (emo: any, index: number) => {
+                          const style = getEmotionStyle(emo.emotion);
+                          return (
+                            <div
+                              key={index}
+                              className={`flex items-start gap-2 rounded-2xl px-3 py-2 text-xs md:text-sm ring-1 ${style.bg} ${style.text} ${style.ring} shadow-sm`}
+                            >
+                              <span className="text-lg mt-[1px]">
+                                {style.emoji}
                               </span>
-                              <span className="opacity-80">
-                                Intenzitet: {emo.intensity}/100
-                              </span>
+                              <div className="flex flex-col">
+                                <span className="font-semibold capitalize">
+                                  {emo.emotion}
+                                </span>
+                                <span className="opacity-80">
+                                  Intenzitet: {emo.intensity}/100
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        }
+                      )}
                     </div>
                   ) : (
                     <p className="text-xs text-slate-500">
@@ -723,7 +665,7 @@ export default function DashboardPage() {
                           <p className="text-[11px] font-semibold uppercase tracking-wide">
                             {key.replace(/_/g, " ")}
                           </p>
-                          <p className="text-sm mt-1">{val}</p>
+                          <p className="text-sm mt-1">{val as string}</p>
                         </div>
                       )
                     )}
