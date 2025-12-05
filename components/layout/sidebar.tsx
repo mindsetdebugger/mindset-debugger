@@ -14,6 +14,8 @@ import {
   LogOut,
   Infinity,
   NotebookTabs,
+  Compass,
+  UserStar,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -31,8 +33,9 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
     { href: "/dashboard", label: "Home", icon: Home },
     { href: "/dashboard/insights", label: "Insights", icon: Search },
     { href: "/dashboard/trends", label: "Trends", icon: LineChart },
+    { href: "/dashboard/compass", label: "Compass", icon: Compass },
+    { href: "/dashboard/coach", label: "Coach", icon: UserStar },
     { href: "/dashboard/notes", label: "Notes", icon: NotebookTabs },
-    { href: "/dashboard/roadmap", label: "Roadmap", icon: Target },
     { href: "/dashboard/history", label: "History", icon: BookText },
     { href: "/dashboard/settings", label: "Settings", icon: Settings },
   ];

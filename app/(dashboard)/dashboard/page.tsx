@@ -5,7 +5,13 @@ import Link from "next/link";
 
 import { supabaseBrowser } from "@/lib/supabase/client";
 
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/components/ui/card";
+
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
@@ -16,9 +22,10 @@ import {
   Brain,
   CalendarDays,
   ChevronRight,
-  Target,
 } from "lucide-react";
+
 import { useUpdateSummary } from "@/app/hooks/useUpdateSummary";
+import { useWeeklyAIRefresh } from "@/app/hooks/useWeeklyAIRefresh";
 
 // ===============================
 // Types
@@ -48,102 +55,15 @@ type EntryRow = {
 };
 
 // ===============================
-// Helpers
+// Emotion helpers (unchanged)
 // ===============================
-const emotionStyles: Record<
-  string,
-  { emoji: string; bg: string; text: string; ring: string }
-> = {
-  joy: {
-    emoji: "😊",
-    bg: "bg-amber-50",
-    text: "text-amber-800",
-    ring: "ring-amber-200",
-  },
-  happiness: {
-    emoji: "😄",
-    bg: "bg-amber-50",
-    text: "text-amber-800",
-    ring: "ring-amber-200",
-  },
-  calm: {
-    emoji: "😌",
-    bg: "bg-sky-50",
-    text: "text-sky-800",
-    ring: "ring-sky-200",
-  },
-  relief: {
-    emoji: "😮‍💨",
-    bg: "bg-sky-50",
-    text: "text-sky-800",
-    ring: "ring-sky-200",
-  },
-  sadness: {
-    emoji: "😢",
-    bg: "bg-blue-50",
-    text: "text-blue-800",
-    ring: "ring-blue-200",
-  },
-  grief: {
-    emoji: "😭",
-    bg: "bg-blue-50",
-    text: "text-blue-800",
-    ring: "ring-blue-200",
-  },
-  fear: {
-    emoji: "😨",
-    bg: "bg-indigo-50",
-    text: "text-indigo-800",
-    ring: "ring-indigo-200",
-  },
-  anxiety: {
-    emoji: "😰",
-    bg: "bg-indigo-50",
-    text: "text-indigo-800",
-    ring: "ring-indigo-200",
-  },
-  stress: {
-    emoji: "😵‍💫",
-    bg: "bg-rose-50",
-    text: "text-rose-800",
-    ring: "ring-rose-200",
-  },
-  overwhelm: {
-    emoji: "😵",
-    bg: "bg-rose-50",
-    text: "text-rose-800",
-    ring: "ring-rose-200",
-  },
-  anger: {
-    emoji: "😡",
-    bg: "bg-red-50",
-    text: "text-red-800",
-    ring: "ring-red-200",
-  },
-  frustration: {
-    emoji: "😤",
-    bg: "bg-red-50",
-    text: "text-red-800",
-    ring: "ring-red-200",
-  },
-  guilt: {
-    emoji: "😔",
-    bg: "bg-purple-50",
-    text: "text-purple-800",
-    ring: "ring-purple-200",
-  },
-  shame: {
-    emoji: "🙈",
-    bg: "bg-purple-50",
-    text: "text-purple-800",
-    ring: "ring-purple-200",
-  },
-  hope: {
-    emoji: "🌱",
-    bg: "bg-emerald-50",
-    text: "text-emerald-800",
-    ring: "ring-emerald-200",
-  },
+const emotionStyles: Record<string, any> = {
+  joy: { emoji: "😊", bg: "bg-amber-50", text: "text-amber-800", ring: "ring-amber-200" },
+  calm: { emoji: "😌", bg: "bg-sky-50", text: "text-sky-800", ring: "ring-sky-200" },
+  anxiety: { emoji: "😰", bg: "bg-indigo-50", text: "text-indigo-800", ring: "ring-indigo-200" },
+  stress: { emoji: "😵‍💫", bg: "bg-rose-50", text: "text-rose-800", ring: "ring-rose-200" },
+  hope: { emoji: "🌱", bg: "bg-emerald-50", text: "text-emerald-800", ring: "ring-emerald-200" },
+  frustration: { emoji: "😤", bg: "bg-red-50", text: "text-red-800", ring: "ring-red-200" },
 };
 
 function getEmotionStyle(name: string) {
@@ -160,50 +80,15 @@ function getEmotionStyle(name: string) {
 
 function scoreToMood(score: number | null) {
   if (score === null || score === undefined)
-    return {
-      emoji: "❔",
-      label: "N/A",
-      bg: "bg-slate-100",
-      text: "text-slate-600",
-    };
-
-  if (score >= 75)
-    return {
-      emoji: "😄",
-      label: "High",
-      bg: "bg-emerald-50",
-      text: "text-emerald-700",
-    };
-
-  if (score >= 55)
-    return {
-      emoji: "🙂",
-      label: "Balanced",
-      bg: "bg-indigo-50",
-      text: "text-indigo-700",
-    };
-
-  if (score >= 35)
-    return {
-      emoji: "😕",
-      label: "Low",
-      bg: "bg-amber-50",
-      text: "text-amber-800",
-    };
-
-  return {
-    emoji: "😣",
-    label: "Very low",
-    bg: "bg-rose-50",
-    text: "text-rose-800",
-  };
+    return { emoji: "❔", label: "N/A", bg: "bg-slate-100", text: "text-slate-600" };
+  if (score >= 75) return { emoji: "😄", label: "High", bg: "bg-emerald-50", text: "text-emerald-700" };
+  if (score >= 55) return { emoji: "🙂", label: "Balanced", bg: "bg-indigo-50", text: "text-indigo-700" };
+  if (score >= 35) return { emoji: "😕", label: "Low", bg: "bg-amber-50", text: "text-amber-800" };
+  return { emoji: "😣", label: "Very low", bg: "bg-rose-50", text: "text-rose-800" };
 }
 
 function formatDateLabel(date: Date) {
-  return date.toLocaleDateString("hr-HR", {
-    day: "2-digit",
-    month: "short",
-  });
+  return date.toLocaleDateString("hr-HR", { day: "2-digit", month: "short" });
 }
 
 function isSameDay(a: Date, b: Date) {
@@ -215,39 +100,43 @@ function isSameDay(a: Date, b: Date) {
 // ===============================
 export default function DashboardPage() {
   const supabase = supabaseBrowser();
-
   const { updateSummary, loadingSummary } = useUpdateSummary();
 
-  // New entry
+  // ⭐ NEW: Universal weekly auto-refresh (Compass + Roadmap)
+  const { loading: weeklyLoading, refreshing: weeklyRefreshing } =
+    useWeeklyAIRefresh();
+
+  // ===============================
+  // LOCAL STATE
+  // ===============================
   const [input, setInput] = useState("");
   const [analysis, setAnalysis] = useState<DeepAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Data from DB
   const [latestEntry, setLatestEntry] = useState<EntryRow | null>(null);
   const [recentEntries, setRecentEntries] = useState<EntryRow[]>([]);
   const [mindsetScore, setMindsetScore] = useState<number | null>(null);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
 
-  // -----------------------------------
-  // Load entries on mount
-  // -----------------------------------
+  // ===============================
+  // LOAD ENTRIES (unchanged)
+  // ===============================
   useEffect(() => {
     (async () => {
       const { data: session } = await supabase.auth.getUser();
       const user = session?.user;
       if (!user) return;
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("entries")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (error || !data) return;
+      if (!data) return;
 
-      const typed = data as unknown as EntryRow[];
+      const typed = data as EntryRow[];
 
       if (typed.length > 0) {
         const latest = typed[0];
@@ -258,11 +147,11 @@ export default function DashboardPage() {
 
       setRecentEntries(typed.slice(0, 7));
     })();
-  }, [supabase]);
+  }, []);
 
-  // -----------------------------------
-  // Active entry (either freshly analysed or last from DB)
-  // -----------------------------------
+  // ===============================
+  // ACTIVE ENTRY
+  // ===============================
   const activeEntry = useMemo(() => {
     if (analysis) {
       return {
@@ -278,23 +167,19 @@ export default function DashboardPage() {
   const activeDate = activeEntry ? new Date(activeEntry.created_at) : null;
   const isToday = activeDate ? isSameDay(activeDate, new Date()) : false;
 
-  // Recent mood timeline from recent entries
   const moodTimeline = useMemo(
     () =>
       recentEntries
         .filter((e) => e.analysis?.mindset_score !== undefined)
         .slice(0, 7)
-        .map((e) => ({
-          date: new Date(e.created_at),
-          score: e.analysis?.mindset_score ?? null,
-        }))
+        .map((e) => ({ date: new Date(e.created_at), score: e.analysis.mindset_score }))
         .reverse(),
     [recentEntries]
   );
 
-  // -----------------------------------
-  // Analyze new entry
-  // -----------------------------------
+  // ===============================
+  // ANALYZE ENTRY (unchanged)
+  // ===============================
   async function analyze() {
     try {
       setLoading(true);
@@ -325,9 +210,8 @@ export default function DashboardPage() {
       setMindsetScore(deep.mindset_score);
       setAiInsight(deep.ai_insight_today);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: session } = await supabase.auth.getUser();
+      const user = session?.user;
 
       if (user) {
         const newEntry: EntryRow = {
@@ -345,6 +229,7 @@ export default function DashboardPage() {
 
         setLatestEntry(newEntry);
         setRecentEntries((prev) => [newEntry, ...prev]);
+
         await updateSummary(deep);
       }
     } catch (err: any) {

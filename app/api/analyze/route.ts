@@ -17,35 +17,14 @@ export async function POST(req: Request) {
     });
 
     const prompt = `
-You are Mindset Debugger™, an advanced cognitive analysis engine.
+You are Mindset Debugger™, an advanced cognitive–emotional analysis engine.
 
-Analyze the user's entry deeply using:
-- cognitive science
-- emotional analytics
-- behavioral psychology
-- motivation science
-- pattern detection
-- long-term emotional trend modeling
-
-Write the entire analysis in SECOND PERSON (“ti”, “tvoje misli…”, “kod tebe…”).
-
+Write everything in SECOND PERSON (“ti”, “tvoje misli…”).
 Return ONLY VALID JSON.
-NO markdown.
-NO explanations.
-EVERY field must be present. No nulls.
+No markdown. No explanations. No nulls.
 
 ====================================================
-ACTION LOGIC RULES:
-====================================================
-- "today_micro_step" MUST be 1 behavioural instruction, ≤ 15 words, doable in under 2 minutes.
-- Must begin with an action verb (“Napravi…”, “Udahni…”, “Uzmi 1 minutu za…”).
-- "tomorrow_focus" = 1 clear direction you need to follow.
-- "potential_pitfall" = subtle trap you often fall into.
-- "supportive_mindset" = 1–2 warm sentences addressed to YOU.
-- "ai_insight_today" = 2–4 dense sentences.
-
-====================================================
-JSON STRUCTURE:
+RESPONSE FORMAT:
 ====================================================
 {
   "summary": "...",
@@ -54,7 +33,7 @@ JSON STRUCTURE:
     "primary": [{ "emotion": "...", "intensity": 0 }],
     "secondary": [{ "emotion": "...", "intensity": 0 }],
     "body_sensations": ["..."],
-    "emotion_direction": "rising | falling | stable",
+    "emotion_direction": "rising|falling|stable",
     "emotion_regulation_capacity": 0
   },
 
@@ -72,7 +51,7 @@ JSON STRUCTURE:
   "sentence_scan": [
     {
       "sentence": "...",
-      "type": "fact" | "interpretation" | "fear_projection",
+      "type": "fact|interpretation|fear_projection",
       "emotion": "...",
       "pattern": "...",
       "notes": "..."
@@ -111,8 +90,8 @@ JSON STRUCTURE:
   "trends": {
     "short_term_patterns": ["..."],
     "long_term_patterns": ["..."],
-    "energy_trend": "up | down | neutral",
-    "motivation_trend": "up | down | neutral"
+    "energy_trend": "up|down|neutral",
+    "motivation_trend": "up|down|neutral"
   },
 
   "stats": {
@@ -125,22 +104,48 @@ JSON STRUCTURE:
 
   "mindset_score": 0,
   "ai_insight_today": "...",
-
   "tags": ["..."],
 
   "meta": {
     "analysis_confidence": 0.0,
     "distress_level": 0,
-    "category": "stress | fear | motivation | relationships | identity | growth | burnout | uncertainty | frustration | overwhelm | sadness | mixed"
+    "category": "stress|fear|motivation|relationships|identity|growth|burnout|uncertainty|frustration|overwhelm|sadness|mixed"
+  },
+
+  "behavioural_profile": {
+    "avoidance_tendencies": "...",
+    "emotional_response_style": "...",
+    "decision_making_bias": "...",
+    "activation_level": 0
+  },
+
+  "coaching_recommendations": {
+    "focus_for_today": "...",
+    "focus_for_tomorrow": "...",
+    "optimal_strategy": "...",
+    "motivation_driver": "...",
+    "energy_management": "..."
+  },
+
+  "progress_tracking": {
+    "consistency_score": 0,
+    "streak_days": 0,
+    "recent_wins": ["..."],
+    "areas_to_improve": ["..."]
   }
 }
 
 ====================================================
-RULES:
-- No markdown
-- No null fields
-- All numbers 0–100
-- Write everything in SECOND PERSON
+COACHING RULES:
+====================================================
+- "today_micro_step" ≤ 15 words, super konkretan, izvediv u < 2 minute.
+- "ai_insight_today" = 2–4 guste rečenice.
+- Polja u "coaching_recommendations" neka budu 2–3 rečenice – konkretan, topao i usmjeren savjet.
+- SVE piši u drugom licu (“ti…”, “kod tebe…”).
+- Nema praznih polja, nema null.
+
+====================================================
+INPUT CONTEXT:
 ====================================================
 
 USER HISTORY SUMMARY:
@@ -153,24 +158,17 @@ ${text}
     const response = await client.responses.create({
       model: "gpt-4.1",
       input: [
-        { role: "system", content: "Return ONLY raw JSON" },
-        { role: "user", content: prompt }
+        { role: "system", content: "Return ONLY raw JSON." },
+        { role: "user", content: prompt },
       ],
     });
 
-    const raw = response.output[0].content[0].text;
+    const raw = (response as any).output[0].content[0].text;
     const json = JSON.parse(raw);
 
-    return NextResponse.json(
-      { success: true, analysis: json },
-      { status: 200 }
-    );
-
+    return NextResponse.json({ success: true, analysis: json }, { status: 200 });
   } catch (err: any) {
     console.error("ANALYZE ERROR:", err);
-    return NextResponse.json(
-      { error: err.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
