@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,10 +10,8 @@ type Mode = "login" | "register";
 
 export default function LoginRegisterCard() {
   const router = useRouter();
-  const supabase = supabaseBrowser();
 
   const [mode, setMode] = useState<Mode>("login");
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -22,28 +19,23 @@ export default function LoginRegisterCard() {
   async function handleSubmit() {
     setErrorMsg("");
 
-    if (mode === "login") {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const endpoint =
+      mode === "login" ? "/api/auth/login" : "/api/auth/register";
 
-      if (error) {
-        setErrorMsg(error.message);
-        return;
-      }
-    } else {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-      if (error) {
-        setErrorMsg(error.message);
-        return;
-      }
+    const data = await res.json();
+
+    if (!res.ok) {
+      setErrorMsg(data.error || "Something went wrong");
+      return;
     }
 
+    // Ako su cookies dobro postavljeni, middleware će sada propuštati /dashboard
     router.push("/dashboard");
   }
 
@@ -96,9 +88,7 @@ export default function LoginRegisterCard() {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        {errorMsg && (
-          <p className="text-xs text-red-500">{errorMsg}</p>
-        )}
+        {errorMsg && <p className="text-xs text-red-500">{errorMsg}</p>}
 
         <Button className="w-full mt-2" onClick={handleSubmit}>
           {mode === "login" ? "Sign In" : "Create Account"}

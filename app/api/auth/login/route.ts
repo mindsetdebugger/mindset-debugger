@@ -1,23 +1,36 @@
+// app/api/auth/login/route.ts
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { supabaseServer } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
-  const { email, password } = await req.json();
+  try {
+    const { email, password } = await req.json();
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies }
-  );
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: "Missing email or password" },
+        { status: 400 }
+      );
+    }
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+    const supabase = await supabaseServer();
 
-  if (error)
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  return NextResponse.json({ user: data.user });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // supabaseServer + auth helper će ovdje upisati sb-cookie u response
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error("LOGIN ERROR:", err);
+    return NextResponse.json(
+      { error: err.message ?? "Server error" },
+      { status: 500 }
+    );
+  }
 }

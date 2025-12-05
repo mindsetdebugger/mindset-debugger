@@ -1,13 +1,14 @@
+// lib/supabase/server.ts
 import { CookieOptions, createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export async function supabaseServer() {
-  const cookieStorePromise = cookies();
-
-  // force unwrap promise if needed
-  const cookieStore: any = typeof cookieStorePromise.then === "function"
-    ? await cookieStorePromise
-    : cookieStorePromise;
+  // neki runtimovi vraćaju promise, neki objekt → ovo hendla oba
+  const cookieStoreMaybe: any = cookies();
+  const cookieStore =
+    typeof cookieStoreMaybe?.then === "function"
+      ? await cookieStoreMaybe
+      : cookieStoreMaybe;
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
