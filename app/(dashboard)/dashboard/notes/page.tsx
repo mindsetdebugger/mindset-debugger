@@ -2,30 +2,33 @@
 
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 import {
   Plus,
   Search,
-  Tag,
   Pin,
   Trash2,
   Edit3,
   X,
   CalendarClock,
+  Tag,
 } from "lucide-react";
+
 import clsx from "clsx";
 
 // ---------------------------------------
-// TAG COLORS
+// TAG COLORS — pastel + soft text
 // ---------------------------------------
 const tagColors = [
-  "bg-indigo-100 text-indigo-700",
-  "bg-emerald-100 text-emerald-700",
-  "bg-rose-100 text-rose-700",
-  "bg-amber-100 text-amber-700",
-  "bg-blue-100 text-blue-700",
+  "bg-indigo-50 text-indigo-700 border border-indigo-100",
+  "bg-emerald-50 text-emerald-700 border border-emerald-100",
+  "bg-rose-50 text-rose-700 border border-rose-100",
+  "bg-amber-50 text-amber-700 border border-amber-100",
+  "bg-sky-50 text-sky-700 border border-sky-100",
 ];
 
 // ---------------------------------------
@@ -42,7 +45,7 @@ type Note = {
 };
 
 // ---------------------------------------
-// PAGE COMPONENT
+// PAGE
 // ---------------------------------------
 export default function NotesPage() {
   const supabase = supabaseBrowser();
@@ -55,7 +58,7 @@ export default function NotesPage() {
   const [newNote, setNewNote] = useState(false);
   const [editNote, setEditNote] = useState<Note | null>(null);
 
-  // form states
+  // form
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -69,14 +72,14 @@ export default function NotesPage() {
       const user = session?.user;
       if (!user) return;
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("notes")
         .select("*")
         .eq("user_id", user.id)
         .order("pinned", { ascending: false })
         .order("updated_at", { ascending: false });
 
-      if (!error && data) {
+      if (data) {
         setNotes(data);
         setFiltered(data);
       }
@@ -84,7 +87,7 @@ export default function NotesPage() {
   }, []);
 
   // ---------------------------------------
-  // SEARCH FILTER
+  // SEARCH
   // ---------------------------------------
   useEffect(() => {
     const s = search.toLowerCase();
@@ -113,17 +116,16 @@ export default function NotesPage() {
   }
 
   // ---------------------------------------
-  // SAVE NOTE
+  // SAVE NOTE (ADD / UPDATE)
   // ---------------------------------------
   async function saveNote() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: session } = await supabase.auth.getUser();
+    const user = session?.user;
     if (!user) return;
 
     if (editNote) {
       // UPDATE
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("notes")
         .update({
           title,
@@ -135,21 +137,17 @@ export default function NotesPage() {
         .select("*")
         .single();
 
-      if (!error && data) {
-        setNotes((prev) =>
-          prev.map((n) => (n.id === data.id ? data : n))
-        );
-        setFiltered((prev) =>
-          prev.map((n) => (n.id === data.id ? data : n))
-        );
+      if (data) {
+        setNotes((prev) => prev.map((n) => (n.id === data.id ? data : n)));
+        setFiltered((prev) => prev.map((n) => (n.id === data.id ? data : n)));
       }
 
       resetForm();
       return;
     }
 
-    // NEW NOTE
-    const { data, error } = await supabase
+    // NEW
+    const { data } = await supabase
       .from("notes")
       .insert({
         user_id: user.id,
@@ -160,7 +158,7 @@ export default function NotesPage() {
       .select("*")
       .single();
 
-    if (!error && data) {
+    if (data) {
       setNotes((prev) => [data, ...prev]);
       setFiltered((prev) => [data, ...prev]);
     }
@@ -169,27 +167,26 @@ export default function NotesPage() {
   }
 
   // ---------------------------------------
-  // DELETE NOTE
+  // DELETE
   // ---------------------------------------
   async function deleteNote(id: string) {
     await supabase.from("notes").delete().eq("id", id);
-
     setNotes((prev) => prev.filter((n) => n.id !== id));
     setFiltered((prev) => prev.filter((n) => n.id !== id));
   }
 
   // ---------------------------------------
-  // PIN NOTE
+  // PIN
   // ---------------------------------------
   async function togglePin(note: Note) {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("notes")
       .update({ pinned: !note.pinned })
       .eq("id", note.id)
       .select("*")
       .single();
 
-    if (!error && data) {
+    if (data) {
       const updated = notes
         .map((n) => (n.id === data.id ? data : n))
         .sort((a, b) => Number(b.pinned) - Number(a.pinned));
@@ -200,7 +197,7 @@ export default function NotesPage() {
   }
 
   // ---------------------------------------
-  // RESET FORM
+  // HELPERS
   // ---------------------------------------
   function resetForm() {
     setNewNote(false);
@@ -211,32 +208,34 @@ export default function NotesPage() {
   }
 
   function toggleTag(tag: string) {
-    if (tags.includes(tag)) {
-      setTags(tags.filter((t) => t !== tag));
-    } else {
-      setTags([...tags, tag]);
-    }
+    setTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
   }
 
   // ---------------------------------------
-  // UI
+  // RENDER
   // ---------------------------------------
   return (
     <div className="px-6 md:px-12 py-10 space-y-10">
-      {/* Header */}
+
+      {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">📝 Notes</h1>
-          <p className="text-slate-500">Čuvaj ideje, uvide, misli i refleksije.</p>
+          <p className="text-slate-500">Čuvaj uvide, misli, ideje i refleksije.</p>
         </div>
 
-        <Button onClick={() => setNewNote(true)} className="flex items-center gap-2">
+        <Button
+          onClick={() => setNewNote(true)}
+          className="flex items-center gap-2 rounded-xl px-4 py-2"
+        >
           <Plus className="w-4 h-4" />
           New Note
         </Button>
       </div>
 
-      {/* Search */}
+      {/* SEARCH */}
       <div className="flex items-center gap-3 bg-white p-3 rounded-2xl shadow-sm ring-1 ring-slate-200">
         <Search className="w-5 h-5 text-slate-500" />
         <Input
@@ -247,19 +246,24 @@ export default function NotesPage() {
         />
       </div>
 
-      {/* Notes Grid */}
+      {/* GRID — MASONRY */}
       <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
         {filtered.map((note) => (
           <Card
             key={note.id}
-            className="break-inside-avoid p-5 rounded-3xl shadow-sm ring-1 ring-slate-200 bg-white relative transition hover:shadow-lg"
+            className="break-inside-avoid p-5 rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 relative hover:shadow-md transition"
           >
-            {/* PIN BUTTON */}
+            {/* PIN ICON */}
             <button
               onClick={() => togglePin(note)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"
+              className={clsx(
+                "absolute top-4 right-4 transition",
+                note.pinned
+                  ? "text-indigo-600"
+                  : "text-slate-400 hover:text-slate-700"
+              )}
             >
-              <Pin className={clsx("w-5 h-5", note.pinned && "text-indigo-600")} />
+              <Pin className="w-5 h-5" />
             </button>
 
             {/* TITLE */}
@@ -292,7 +296,7 @@ export default function NotesPage() {
             </div>
 
             {/* ACTIONS */}
-            <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-between mt-5 pt-4 border-t border-slate-100">
               <button
                 className="text-slate-400 hover:text-slate-700 flex items-center gap-1"
                 onClick={() => {
@@ -316,12 +320,14 @@ export default function NotesPage() {
         ))}
       </div>
 
-      {/* CREATE / EDIT MODAL */}
+      {/* MODAL */}
       {(newNote || editNote) && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-xl space-y-4">
+        <div className="fixed inset-0 bg-black/35 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-xl space-y-5">
+
+            {/* TOP */}
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">
+              <h2 className="text-xl font-semibold text-slate-900">
                 {editNote ? "Edit Note" : "New Note"}
               </h2>
               <button onClick={resetForm}>
@@ -329,35 +335,39 @@ export default function NotesPage() {
               </button>
             </div>
 
+            {/* TITLE */}
             <Input
               placeholder="Title"
-              className="w-full"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              className="rounded-xl"
             />
 
+            {/* CONTENT */}
             <textarea
               placeholder="Your note..."
-              className="w-full min-h-[150px] p-3 border rounded-xl"
+              className="w-full min-h-[150px] p-3 rounded-xl border border-slate-300 text-sm"
               value={content}
               onChange={(e) => setContent(e.target.value)}
             />
 
-            {/* TAG SELECTOR */}
+            {/* TAG SELECT */}
             <div className="space-y-2">
               <p className="text-sm text-slate-600">Tags</p>
+
               <div className="flex flex-wrap gap-2">
                 {["mindset", "emotion", "goal", "idea", "reflection"].map(
                   (tag, i) => (
                     <button
                       key={i}
+                      onClick={() => toggleTag(tag)}
                       className={clsx(
                         "px-3 py-1 rounded-xl text-xs font-medium ring-1",
+
                         tags.includes(tag)
                           ? "bg-indigo-600 text-white ring-indigo-600"
                           : "bg-slate-100 text-slate-600 ring-slate-300"
                       )}
-                      onClick={() => toggleTag(tag)}
                     >
                       #{tag}
                     </button>
@@ -366,7 +376,8 @@ export default function NotesPage() {
               </div>
             </div>
 
-            <Button onClick={saveNote} className="w-full">
+            {/* SUBMIT */}
+            <Button onClick={saveNote} className="w-full rounded-xl">
               {editNote ? "Save Changes" : "Add Note"}
             </Button>
           </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
 import { motion, AnimatePresence } from "framer-motion";
+import MobileMenu from "@/components/layout/mobile-menu";
 
 export default function DashboardLayout({
   children,
@@ -22,30 +23,8 @@ export default function DashboardLayout({
         </div>
       </div>
 
-      {/* MOBILE SIDEBAR */}
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setOpen(false)}
-            />
-
-            <motion.div
-              className="fixed top-0 left-0 h-full w-72 z-50 md:hidden bg-white shadow-2xl"
-              initial={{ x: -260 }}
-              animate={{ x: 0 }}
-              exit={{ x: -260 }}
-              transition={{ type: "spring", stiffness: 260, damping: 28 }}
-            >
-              <Sidebar onClose={() => setOpen(false)} />
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+{/* MOBILE GRID MENU */}
+<MobileMenu open={open} onClose={() => setOpen(false)} />
 
       {/* MAIN AREA */}
       <div className="flex flex-col flex-1 md:ml-64 h-screen">
@@ -57,7 +36,7 @@ export default function DashboardLayout({
 
         {/* FULL-WIDTH SCROLL AREA */}
         <div className="flex-1 overflow-y-auto">
-          {/* Content wrapper (not scrollable) */}
+          {/* Content wrapper */}
           <div className="w-full max-w-6xl mx-auto px-4 md:px-10 py-10 space-y-10">
             {children}
           </div>

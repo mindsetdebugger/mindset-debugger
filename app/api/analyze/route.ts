@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       apiKey: process.env.OPENAI_API_KEY!,
     });
 
-    const prompt = `
+const prompt = `
 You are Mindset Debugger™, an advanced cognitive–emotional analysis engine.
 
 Write everything in SECOND PERSON (“ti”, “tvoje misli…”).
@@ -24,7 +24,30 @@ Return ONLY VALID JSON.
 No markdown. No explanations. No nulls.
 
 ====================================================
-RESPONSE FORMAT:
+MINDSET SCORE RULES (UPDATED — VERY IMPORTANT):
+====================================================
+Mindset score must reflect **overall balance**, not only stress markers.
+
+Mindset Score Formula (conceptual):
+- Start from a neutral baseline = 60.
+- Add points for: optimism, clarity, self-awareness, growth signals, motivation, emotional regulation.
+- Subtract points for: overwhelm, spiralling, catastrophizing, helplessness, emotional reactivity.
+- Positive emotions must RAISE the score.
+- Neutral / mixed content should stay in the 55–75 range.
+- Only severe distress, hopelessness or crisis should go below 40.
+- Only exceptional clarity, confidence or grounded positivity should go above 85.
+
+The score MUST NOT default to low values.
+Score range guidelines:
+90–100 → exceptionally strong mindset moment
+75–89 → healthy, grounded, functional mindset
+55–74 → slight tension but overall stable
+40–54 → struggling but coping
+25–39 → clear emotional distress
+0–24 → severe distress
+
+====================================================
+RESPONSE JSON FORMAT:
 ====================================================
 {
   "summary": "...",
@@ -140,9 +163,8 @@ COACHING RULES:
 ====================================================
 - "today_micro_step" ≤ 15 words, super konkretan, izvediv u < 2 minute.
 - "ai_insight_today" = 2–4 guste rečenice.
-- Polja u "coaching_recommendations" neka budu 2–3 rečenice – konkretan, topao i usmjeren savjet.
-- SVE piši u drugom licu (“ti…”, “kod tebe…”).
-- Nema praznih polja, nema null.
+- Everything in second person (“ti…”).
+- No blanks, no null.
 
 ====================================================
 INPUT CONTEXT:
@@ -154,6 +176,7 @@ ${historySummary || "None"}
 ENTRY:
 ${text}
 `;
+
 
     const response = await client.responses.create({
       model: "gpt-4.1",

@@ -3,7 +3,14 @@
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Sparkles, Heart, Feather, Layers } from "lucide-react";
+
+import {
+  Sparkles,
+  Heart,
+  Feather,
+  Layers,
+} from "lucide-react";
+
 import { SaveToNotesButton } from "@/components/SaveToNotesButton";
 
 
@@ -15,7 +22,6 @@ const emotionStyles: Record<
   { emoji: string; bg: string; text: string; ring: string }
 > = {
   joy: { emoji: "😊", bg: "bg-amber-50", text: "text-amber-800", ring: "ring-amber-200" },
-  happiness: { emoji: "😄", bg: "bg-amber-50", text: "text-amber-800", ring: "ring-amber-200" },
   calm: { emoji: "😌", bg: "bg-sky-50", text: "text-sky-800", ring: "ring-sky-200" },
   anxiety: { emoji: "😰", bg: "bg-indigo-50", text: "text-indigo-900", ring: "ring-indigo-200" },
   stress: { emoji: "😵‍💫", bg: "bg-rose-50", text: "text-rose-800", ring: "ring-rose-200" },
@@ -74,7 +80,11 @@ export default function InsightsPage() {
   }, []);
 
   if (!summary)
-    return <div className="p-10 text-center text-slate-500">Loading insights…</div>;
+    return (
+      <div className="py-20 text-center text-slate-500">
+        Loading insights…
+      </div>
+    );
 
   const insights = summary.insights_page || {};
   const aggregates = summary.aggregates || {};
@@ -82,15 +92,16 @@ export default function InsightsPage() {
 
 
   return (
-    <div className="px-4 md:px-10 py-12 space-y-14">
+    <div className="py-12 space-y-14">
 
       {/* HEADER */}
-      <header className="space-y-2">
-        <h1 className="text-4xl font-bold text-slate-900 flex items-center gap-3">
+      <header className="space-y-3 max-w-3xl">
+        <h1 className="text-4xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
           ✨ Deep Personal Insights
         </h1>
-        <p className="text-slate-600 max-w-2xl">
-          Sveobuhvatni prikaz tvojih emocionalnih obrazaca, potreba, uvjerenja i smjerova rasta — bazirano na svim tvojim dosadašnjim unosima i automatski ažurirano.
+        <p className="text-slate-600 leading-relaxed">
+          Tvoj personalizirani emocionalni i kognitivni profil — generiran kroz stotine signala iz svih tvojih unosa.
+          Minimalno, jasno, profesionalno. Uvidi koji te vode naprijed.
         </p>
       </header>
 
@@ -98,13 +109,14 @@ export default function InsightsPage() {
       {/* ---------------------------------------------------------- */}
       {/* GRID LAYOUT */}
       {/* ---------------------------------------------------------- */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+
 
         {/* ---------------- TOP EMOTIONS ---------------- */}
-        <Card className="rounded-3xl shadow-xl border border-slate-200 col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg flex items-center gap-2">
-              💗 Top Emotions (Last Entry)
+        <Card className="rounded-3xl shadow-xl border border-slate-200 bg-white/90 backdrop-blur">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              💗 Top Emotions
             </CardTitle>
 
             <SaveToNotesButton
@@ -124,7 +136,7 @@ export default function InsightsPage() {
                 >
                   <span className="text-2xl">{s.emoji}</span>
                   <div>
-                    <p className="font-semibold capitalize">{e.emotion}</p>
+                    <p className="font-medium capitalize">{e.emotion}</p>
                     <p className="text-xs opacity-70">Intensity: {e.intensity}/100</p>
                   </div>
                 </div>
@@ -134,10 +146,12 @@ export default function InsightsPage() {
         </Card>
 
 
-        {/* ---------------- DOMINANT COGNITIVE PATTERN ---------------- */}
-        <Card className="rounded-3xl shadow-xl border border-indigo-200 bg-indigo-50 col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-indigo-900 flex items-center gap-2 text-lg">
+
+
+        {/* ---------------- COGNITIVE PATTERN ---------------- */}
+        <Card className="rounded-3xl shadow-xl border border-indigo-200 bg-indigo-50">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-indigo-900">
               🧠 Dominant Cognitive Pattern
             </CardTitle>
 
@@ -149,17 +163,21 @@ export default function InsightsPage() {
           </CardHeader>
 
           <CardContent>
-            <div className="p-4 bg-white rounded-2xl border border-indigo-200 shadow-sm text-indigo-900">
+            <div className="p-4 rounded-2xl bg-white shadow-sm border border-indigo-200 text-indigo-900">
               {aggregates?.top_cognitive_patterns?.[0] || "N/A"}
             </div>
           </CardContent>
         </Card>
 
 
+
+
         {/* ---------------- LIMITING BELIEFS ---------------- */}
-        <Card className="rounded-3xl shadow-xl border border-rose-200 bg-rose-50 col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg text-rose-700">⚠️ Limiting Beliefs</CardTitle>
+        <Card className="rounded-3xl shadow-xl border border-rose-200 bg-rose-50">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-rose-700">
+              ⚠️ Limiting Beliefs
+            </CardTitle>
 
             <SaveToNotesButton
               title="Limiting Beliefs"
@@ -181,10 +199,12 @@ export default function InsightsPage() {
         </Card>
 
 
+
+
         {/* ---------------- CORE NEEDS ---------------- */}
-        <Card className="rounded-3xl shadow-xl border border-emerald-200 bg-emerald-50 col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg text-emerald-700 flex items-center gap-2">
+        <Card className="rounded-3xl shadow-xl border border-emerald-200 bg-emerald-50">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-emerald-700 flex items-center gap-2">
               <Heart className="w-5" /> Core Needs
             </CardTitle>
 
@@ -208,10 +228,12 @@ export default function InsightsPage() {
         </Card>
 
 
+
+
         {/* ---------------- DEEP FEARS ---------------- */}
-        <Card className="rounded-3xl shadow-xl border border-indigo-200 bg-indigo-50 col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg text-indigo-800 flex items-center gap-2">
+        <Card className="rounded-3xl shadow-xl border border-indigo-200 bg-indigo-50">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-indigo-800 flex items-center gap-2">
               <Feather className="w-5" /> Deep Fears
             </CardTitle>
 
@@ -235,10 +257,12 @@ export default function InsightsPage() {
         </Card>
 
 
+
+
         {/* ---------------- STRENGTHS OVER TIME ---------------- */}
-        <Card className="rounded-3xl shadow-xl border border-amber-200 bg-amber-50 col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg text-amber-700">
+        <Card className="rounded-3xl shadow-xl border border-amber-200 bg-amber-50">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-amber-700">
               ✨ Strengths Over Time
             </CardTitle>
 
@@ -262,10 +286,12 @@ export default function InsightsPage() {
         </Card>
 
 
+
+
         {/* ---------------- GROWTH EDGES ---------------- */}
-        <Card className="rounded-3xl shadow-xl border border-purple-200 bg-purple-50 col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg text-purple-700 flex items-center gap-2">
+        <Card className="rounded-3xl shadow-xl border border-purple-200 bg-purple-50">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-purple-700 flex items-center gap-2">
               <Layers className="w-5" /> Growth Edges
             </CardTitle>
 
@@ -289,10 +315,12 @@ export default function InsightsPage() {
         </Card>
 
 
+
+
         {/* ---------------- PERSONAL STYLE ---------------- */}
-        <Card className="rounded-3xl shadow-xl border border-slate-200 bg-white col-span-1 md:col-span-3">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg flex items-center gap-2">
+        <Card className="rounded-3xl shadow-xl border border-slate-200 bg-white md:col-span-3">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-semibold text-slate-900 flex items-center gap-2">
               <Sparkles className="text-indigo-600 w-5" />
               Your Personal Style
             </CardTitle>
@@ -335,7 +363,6 @@ export default function InsightsPage() {
             </div>
           </CardContent>
         </Card>
-
       </div>
     </div>
   );

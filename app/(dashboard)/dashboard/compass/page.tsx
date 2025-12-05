@@ -8,19 +8,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
 import {
   ShieldCheck,
   Brain,
   Heart,
-  Compass,
+  Compass as CompassIcon,
   Flame,
   Anchor,
   AlertTriangle,
   Loader2,
   RefreshCw,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
+// --------------------------------------------------
+// Types
+// --------------------------------------------------
 type CompassProfile = {
   core_values: string[];
   default_emotional_style: string;
@@ -42,57 +47,47 @@ export default function CompassPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // -----------------------------
-// LOAD COMPASS PROFILE
-// -----------------------------
-useEffect(() => {
-  (async () => {
-    setLoading(true);
+  // --------------------------------------------------
+  // Load Compass Profile
+  // --------------------------------------------------
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
 
-    try {
-      const res = await fetch("/api/compass", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
+      try {
+        const res = await fetch("/api/compass", { method: "GET" });
+        const json = await res.json();
 
-      const json = await res.json();
-
-      if (res.ok) {
-        setCompass(json.compass || null);
-      } else {
-        console.error("COMPASS LOAD ERROR:", json.error);
+        if (res.ok) setCompass(json.compass || null);
+        else setCompass(null);
+      } catch {
         setCompass(null);
       }
-    } catch (err) {
-      console.error("COMPASS FETCH EXCEPTION:", err);
-      setCompass(null);
-    }
 
-    setLoading(false);
-  })();
-}, []);
+      setLoading(false);
+    })();
+  }, []);
 
-  // -----------------------------
-  // AUTO-TRIGGER WEEKLY REGEN
-  // -----------------------------
+  // --------------------------------------------------
+  // Auto-weekly regeneration
+  // --------------------------------------------------
   useEffect(() => {
     if (!compass) return;
 
     const last = new Date(compass.last_generated);
-    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const oneWeek = 7 * 24 * 60 * 60 * 1000;
 
-    if (Date.now() - last.getTime() > weekMs) {
+    if (Date.now() - last.getTime() > oneWeek) {
       regenerateCompass();
     }
   }, [compass]);
 
-  // -----------------------------
-  // MANUAL TRIGGER
-  // -----------------------------
+  // --------------------------------------------------
+  // Manual regeneration
+  // --------------------------------------------------
   async function regenerateCompass() {
     setRefreshing(true);
 
-    // 🔥 fetch last entry (needed for roadmap & compass)
     const { data: session } = await supabase.auth.getUser();
     const user = session?.user;
     if (!user) return;
@@ -105,18 +100,13 @@ useEffect(() => {
       .limit(1)
       .maybeSingle();
 
-    const res = await fetch("/api/compass", {
+    await fetch("/api/compass", {
       method: "POST",
-      credentials: "include",
-      body: JSON.stringify({
-        analysis: lastEntry?.analysis ?? {},
-      }),
+      body: JSON.stringify({ analysis: lastEntry?.analysis ?? {} }),
       headers: { "Content-Type": "application/json" },
     });
 
-    const json = await res.json();
-
-    // Reload compass
+    // Reload updated profile
     const { data } = await supabase
       .from("compass_profiles")
       .select("*")
@@ -128,66 +118,94 @@ useEffect(() => {
     setRefreshing(false);
   }
 
-  // -----------------------------
-  // UI HELPERS
-  // -----------------------------
-  function Badge({ children, color }: any) {
+  // --------------------------------------------------
+  // UI Components
+  // --------------------------------------------------
+  function Badge({
+    children,
+    color,
+  }: {
+    children: React.ReactNode;
+    color: string;
+  }) {
     return (
       <span
-        className={`px-3 py-1 rounded-xl text-sm border ${color}`}
+        className={`
+          px-3 py-1 rounded-xl text-sm border whitespace-nowrap
+          ${color}
+        `}
       >
         {children}
       </span>
     );
   }
 
-  // -----------------------------
-  // RENDER
-  // -----------------------------
-  if (loading)
+  // --------------------------------------------------
+  // Loading
+  // --------------------------------------------------
+  if (loading) {
     return (
-      <div className="px-6 py-20 flex justify-center text-slate-500">
-        <Loader2 className="animate-spin w-6 h-6" />
+      <div className="py-20 flex justify-center text-slate-500">
+        <Loader2 className="w-6 h-6 animate-spin" />
       </div>
     );
+  }
 
-  if (!compass)
+  // --------------------------------------------------
+  // No Compass Yet
+  // --------------------------------------------------
+  if (!compass) {
     return (
-      <div className="px-6 py-20 space-y-6 text-center">
-        <h2 className="text-xl text-slate-700 font-semibold">
+      <div className="text-center py-20 space-y-6 px-6">
+        <h2 className="text-xl font-semibold text-slate-700">
           Compass profile is not generated yet.
         </h2>
+
         <p className="text-slate-500 max-w-md mx-auto">
-          Compass se generira automatski 1× tjedno ili ručno sada.
+          Compass se generira automatski 1× tjedno — ili ga možeš generirati sada.
         </p>
-        <Button onClick={regenerateCompass} disabled={refreshing}>
-          {refreshing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+
+        <Button
+          onClick={regenerateCompass}
+          disabled={refreshing}
+          className="flex items-center gap-2"
+        >
+          {refreshing && <Loader2 className="w-4 h-4 animate-spin" />}
           Generate Compass
         </Button>
       </div>
     );
+  }
 
   const c = compass;
 
+  // --------------------------------------------------
+  // RENDER
+  // --------------------------------------------------
   return (
-    <div className="px-6 md:px-12 py-10 space-y-10">
+    <div className="py-12 space-y-12">
+
+      {/* -------------------------------------------------- */}
       {/* HEADER */}
-      <header className="space-y-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold flex items-center gap-3">
-            <Compass className="text-indigo-600 w-8 h-8" />
+      {/* -------------------------------------------------- */}
+      <header className="flex items-center justify-between px-4 md:px-0">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold tracking-tight flex items-center gap-3 text-slate-900">
+            <CompassIcon className="w-8 h-8 text-indigo-600" />
             Your Mental Compass
           </h1>
-          <p className="text-slate-600 max-w-2xl">
-            Tvoja stabilna psihološka mapa — vrijednosti, obrasci, motivacije i dugoročni okidači.
+
+          <p className="text-slate-600 max-w-2xl leading-relaxed">
+            Tvoja stabilna psihološka mapa — vrijednosti, stilovi razmišljanja,
+            emocija, dugoročni okidači i zaštitni faktori.
           </p>
         </div>
 
         <Button
           onClick={regenerateCompass}
           variant="outline"
-          className="flex items-center gap-2"
           disabled={refreshing}
+          className="hidden md:flex items-center gap-2"
         >
           {refreshing ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -198,16 +216,18 @@ useEffect(() => {
         </Button>
       </header>
 
+      {/* -------------------------------------------------- */}
+      {/* GRID */}
+      {/* -------------------------------------------------- */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
         {/* CORE VALUES */}
-        <Card className="rounded-3xl shadow-md border-slate-200">
+        <Card className="rounded-3xl shadow-md border-slate-200 bg-white">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-slate-800">
               <Heart className="text-rose-500" /> Core Values
             </CardTitle>
           </CardHeader>
-
           <CardContent className="flex flex-wrap gap-3">
             {c.core_values.map((v, i) => (
               <Badge key={i} color="bg-rose-50 text-rose-700 border-rose-200">
@@ -218,9 +238,9 @@ useEffect(() => {
         </Card>
 
         {/* EMOTIONAL STYLE */}
-        <Card className="rounded-3xl shadow-md border-slate-200">
+        <Card className="rounded-3xl shadow-md border-slate-200 bg-white">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-slate-800">
               <Brain className="text-indigo-600" /> Emotional Style
             </CardTitle>
           </CardHeader>
@@ -230,9 +250,11 @@ useEffect(() => {
         </Card>
 
         {/* THINKING STYLE */}
-        <Card className="rounded-3xl shadow-md border-slate-200">
+        <Card className="rounded-3xl shadow-md border-slate-200 bg-white">
           <CardHeader>
-            <CardTitle>🧠 Thinking Style</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-slate-800">
+              🧠 Thinking Style
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-slate-700 text-sm leading-relaxed">
             {c.default_thinking_style}
@@ -240,9 +262,9 @@ useEffect(() => {
         </Card>
 
         {/* CORE FEARS */}
-        <Card className="rounded-3xl shadow-md border-slate-200">
+        <Card className="rounded-3xl shadow-md border-slate-200 bg-white">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-slate-800">
               <Flame className="text-amber-500" /> Core Fears
             </CardTitle>
           </CardHeader>
@@ -256,9 +278,9 @@ useEffect(() => {
         </Card>
 
         {/* VULNERABILITIES */}
-        <Card className="rounded-3xl shadow-md border-slate-200 md:col-span-2">
+        <Card className="rounded-3xl shadow-md border-slate-200 bg-white md:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-slate-800">
               <AlertTriangle className="text-red-500" /> Vulnerabilities
             </CardTitle>
           </CardHeader>
@@ -272,9 +294,9 @@ useEffect(() => {
         </Card>
 
         {/* PROTECTIVE FACTORS */}
-        <Card className="rounded-3xl shadow-md border-slate-200 md:col-span-2">
+        <Card className="rounded-3xl shadow-md border-slate-200 bg-white md:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-slate-800">
               <ShieldCheck className="text-emerald-600" /> Protective Factors
             </CardTitle>
           </CardHeader>
@@ -288,9 +310,9 @@ useEffect(() => {
         </Card>
 
         {/* TRIGGERS */}
-        <Card className="rounded-3xl shadow-md border-slate-200 md:col-span-2">
+        <Card className="rounded-3xl shadow-md border-slate-200 bg-white md:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-slate-800">
               ⚡ Long-Term Triggers
             </CardTitle>
           </CardHeader>
@@ -304,16 +326,18 @@ useEffect(() => {
         </Card>
 
         {/* PSYCHOLOGICAL FORMULA */}
-        <Card className="rounded-3xl shadow-md border-slate-200 md:col-span-2">
+        <Card className="rounded-3xl shadow-md border-slate-200 bg-white md:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-slate-800">
               <Anchor className="text-slate-700" /> Psychological Formula
             </CardTitle>
           </CardHeader>
+
           <CardContent className="text-slate-700 text-sm leading-relaxed">
             {c.psychological_formula}
           </CardContent>
         </Card>
+
       </div>
     </div>
   );
