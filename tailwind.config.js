@@ -9,12 +9,24 @@ export default {
   ],
   theme: {
     extend: {
+      /* ================================
+         RADIUS
+      ================================= */
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "var(--radius-lg)",
+        md: "var(--radius-md)",
+        sm: "var(--radius-sm)",
+        xl: "var(--radius-xl)",
+        "2xl": "var(--radius-2xl)",
+        "3xl": "var(--radius-3xl)",
       },
+
+      /* ================================
+         BRAND COLORS (Reflectly Style)
+         → koristi var(--color-*) iz globals.css
+      ================================= */
       colors: {
+        /* Base (shadcn default mappings) */
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
 
@@ -30,7 +42,14 @@ export default {
 
         primary: {
           DEFAULT: "hsl(var(--primary))",
+          soft: "hsl(var(--primary-soft))",         // ⭐ NEW
           foreground: "hsl(var(--primary-foreground))",
+        },
+
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          soft: "hsl(var(--accent-soft))",           // ⭐ NEW
+          foreground: "hsl(var(--accent-foreground))",
         },
 
         secondary: {
@@ -43,20 +62,26 @@ export default {
           foreground: "hsl(var(--muted-foreground))",
         },
 
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
 
+        /* NEW Pastels — optional but perfect for Mindset Dashboard */
+        pastel: {
+          pink: "hsl(var(--pastel-pink))",
+          purple: "hsl(var(--pastel-purple))",
+          green: "hsl(var(--pastel-green))",
+          blue: "hsl(var(--pastel-blue))",
+          yellow: "hsl(var(--pastel-yellow))",
+        },
+
+        /* Borders, rings, input */
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
 
+        /* Charts (shadcn default) */
         chart: {
           1: "hsl(var(--chart-1))",
           2: "hsl(var(--chart-2))",
@@ -64,6 +89,22 @@ export default {
           4: "hsl(var(--chart-4))",
           5: "hsl(var(--chart-5))",
         },
+      },
+
+      /* ================================
+         Shadows
+      ================================= */
+      boxShadow: {
+        soft: "var(--shadow-soft)",
+        card: "var(--shadow-card)",
+      },
+
+      /* ================================
+         Layout Variables
+      ================================= */
+      spacing: {
+        sidebar: "var(--sidebar-width)",
+        "sidebar-collapsed": "var(--sidebar-width-collapsed)",
       },
     },
   },

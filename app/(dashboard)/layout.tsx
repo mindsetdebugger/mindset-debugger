@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
-import { motion, AnimatePresence } from "framer-motion";
 import MobileMenu from "@/components/layout/mobile-menu";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import { useEntriesStore } from "@/lib/store/useEntriesStore";
 
 export default function DashboardLayout({
   children,
@@ -13,35 +14,78 @@ export default function DashboardLayout({
 }) {
   const [open, setOpen] = useState(false);
 
-  return (
-    <div className="h-screen w-full flex bg-gradient-to-b from-white to-slate-50 text-foreground">
+  // Reset store when auth user changes
+  useEffect(() => {
+    const supabase = supabaseBrowser();
+    const { reset } = useEntriesStore.getState();
 
-      {/* SIDEBAR DESKTOP */}
-      <div className="hidden md:flex">
-        <div className="h-screen w-64 border-r border-slate-200 bg-white shadow-sm fixed left-0 top-0">
+    const { data: listener } =
+      supabase.auth.onAuthStateChange(() => reset());
+
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen w-full flex bg-dashboard relative">
+      {/* =============================== */}
+      {/* DESKTOP SIDEBAR */}
+      {/* =============================== */}
+      <aside
+        className="
+          hidden md:block 
+          fixed left-6 top-6 bottom-6 
+          w-60 z-40
+        "
+      >
+        <div
+          className="
+            h-full w-full
+            rounded-3xl bg-white/80 backdrop-blur-xl
+            border border-border
+            shadow-[0_4px_30px_rgba(0,0,0,0.06)]
+            overflow-hidden
+            flex flex-col
+          "
+        >
           <Sidebar />
         </div>
-      </div>
+      </aside>
 
-{/* MOBILE GRID MENU */}
-<MobileMenu open={open} onClose={() => setOpen(false)} />
+      {/* =============================== */}
+      {/* MOBILE MENU OVERLAY (Reflectly style) */}
+      {/* =============================== */}
+      <MobileMenu open={open} onClose={() => setOpen(false)} />
 
+      {/* =============================== */}
       {/* MAIN AREA */}
-      <div className="flex flex-col flex-1 md:ml-64 h-screen">
+      {/* =============================== */}
+      <div
+        className="
+          flex-1 flex flex-col 
+          md:ml-[18rem]  /* space for sidebar */
+        "
+      >
+        {/* =============================== */}
+        {/* FLOATING TOPBAR (desktop) */}
+        {/* =============================== */}
+        <Topbar onMenu={() => setOpen(true)} />
 
-        {/* FIXED TOPBAR */}
-        <div className="sticky top-0 z-20 backdrop-blur-xl bg-white/70 border-b border-slate-200 shadow-sm">
-          <Topbar onMenu={() => setOpen(true)} />
-        </div>
-
-        {/* FULL-WIDTH SCROLL AREA */}
-        <div className="flex-1 overflow-y-auto">
-          {/* Content wrapper */}
-          <div className="w-full max-w-6xl mx-auto px-4 md:px-10 py-10 space-y-10">
-            {children}
-          </div>
-        </div>
-
+        {/* =============================== */}
+        {/* SCROLLABLE CONTENT */}
+        {/* =============================== */}
+        <main
+          className="
+            flex-1 overflow-y-auto
+            px-4 md:px-12 
+            pt-28 pb-24     /* top spacing for floating bar */
+            max-w-6xl w-full 
+            mx-auto
+          "
+        >
+          {children}
+        </main>
       </div>
     </div>
   );

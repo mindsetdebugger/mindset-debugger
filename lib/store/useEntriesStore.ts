@@ -20,10 +20,12 @@ type EntriesStoreState = {
   loaded: boolean;
   error: string | null;
 
-  // actions
   fetchAll: () => Promise<void>;
   createEntry: (content: string, analysis: DeepAnalysis) => Promise<EntryRow | null>;
   getEntryById: (id: string) => EntryRow | undefined;
+
+  /** NEW — reset store when user changes */
+  reset: () => void;
 };
 
 export const useEntriesStore = create<EntriesStoreState>((set, get) => ({
@@ -32,6 +34,16 @@ export const useEntriesStore = create<EntriesStoreState>((set, get) => ({
   loading: false,
   loaded: false,
   error: null,
+
+  reset() {
+    set({
+      entries: [],
+      latestEntry: null,
+      loading: false,
+      loaded: false,
+      error: null,
+    });
+  },
 
   async fetchAll() {
     const { loaded, loading } = get();
@@ -45,14 +57,17 @@ export const useEntriesStore = create<EntriesStoreState>((set, get) => ({
       const user = session?.user;
 
       if (!user) {
-        set({
-          entries: [],
-          latestEntry: null,
-          loading: false,
-          loaded: true,
-          error: null,
-        });
+        get().reset();
         return;
+      }
+
+      // Safety: if entries belong to someone else → reset
+      const state = get();
+      if (
+        state.entries.length > 0 &&
+        state.entries[0].user_id !== user.id
+      ) {
+        get().reset();
       }
 
       const { data, error } = await supabase

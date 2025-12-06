@@ -43,16 +43,13 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
   return (
     <aside
       className="
-        w-64 h-screen
+        h-full w-full
         flex flex-col
-        bg-white/90
-        backdrop-blur-2xl
-        border-r border-slate-200
-        shadow-[0_0_40px_rgba(200,210,230,0.35)]
+        bg-white/90 backdrop-blur-xl
       "
     >
-      {/* HEADER */}
-      <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-200/80">
+      {/* TOP LOGO */}
+      <div className="h-20 flex items-center gap-3 px-6 border-b border-slate-200/70">
         <Infinity className="w-6 h-6 text-indigo-600" />
         <span className="text-lg font-semibold tracking-tight text-slate-800">
           MindsetDebugger
@@ -60,7 +57,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* NAVIGATION */}
-      <nav className="flex-1 px-4 py-6 space-y-1">
+      <nav className="flex-1 flex flex-col px-3 py-6 gap-1">
         {menu.map((item) => {
           const active = pathname === item.href;
 
@@ -72,7 +69,6 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               className={`
                 relative flex items-center gap-3 px-3 py-2 rounded-xl
                 text-sm transition-all duration-200
-        
                 ${
                   active
                     ? "text-indigo-700 font-medium"
@@ -80,26 +76,24 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
                 }
               `}
             >
-              {/* ACTIVE HIGHLIGHT */}
+              {/* ACTIVE BG HIGHLIGHT */}
               {active && (
                 <motion.div
                   layoutId="sidebarActive"
                   className="
                     absolute inset-0 rounded-xl 
-                    bg-gradient-to-r from-indigo-50 to-white 
+                    bg-indigo-50/70 
                     border border-indigo-100
                     shadow-sm
                   "
                 />
               )}
 
-              {/* ICON */}
               <item.icon
                 size={18}
-                className={`
-                  z-[1]
-                  ${active ? "text-indigo-700" : "text-slate-500"}
-                `}
+                className={`z-[1] ${
+                  active ? "text-indigo-700" : "text-slate-500"
+                }`}
               />
 
               <span className="z-[1]">{item.label}</span>
@@ -108,15 +102,15 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
         })}
       </nav>
 
-      {/* FOOTER / LOGOUT */}
-      <div className="px-4 py-4 border-t border-slate-200/80">
+      {/* LOGOUT BUTTON */}
+      <div className="px-3 py-6 border-t border-slate-200/70">
         <button
           onClick={handleLogout}
           className="
-            flex items-center gap-3 px-3 py-2 w-full text-left
-            rounded-xl text-slate-600 hover:text-red-600
-            hover:bg-red-50 transition-all
-            text-sm
+            w-full flex items-center gap-3 px-3 py-2 
+            rounded-xl text-sm text-slate-600
+            hover:text-red-600 hover:bg-red-50 
+            transition-all
           "
         >
           <LogOut size={18} />
